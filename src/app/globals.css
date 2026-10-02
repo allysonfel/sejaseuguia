@@ -1,0 +1,60 @@
+/* Complementos ao CSS do protótipo para o app real. */
+a{color:inherit;text-decoration:none}
+textarea.input{height:auto;min-height:84px;padding:12px 14px;resize:vertical;line-height:1.45}
+select.input.full{width:100%;height:48px;border-radius:14px}
+.err{background:var(--coral-bg);color:var(--coral);border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600;margin-bottom:14px}
+.okmsg{background:var(--sea-bg);color:var(--sea-ink);border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600;margin-bottom:14px}
+.btn[disabled]{opacity:.55;pointer-events:none}
+.center-load{display:grid;place-items:center;height:100%;color:var(--muted)}
+
+/* mapas (Leaflet + OpenStreetMap) */
+.lmap{width:100%;height:100%;background:#EDF1F7}
+.map-box .lmap{height:300px}
+.pz .lmap{height:150px}
+.explore .lmap{position:absolute;inset:0}
+.leaflet-container{font-family:var(--sans)}
+.leaflet-div-icon{background:none;border:0}
+.mk-num{width:26px;height:26px;border-radius:50%;background:var(--navy);color:var(--sun);border:3px solid #fff;display:grid;place-items:center;font:800 11.5px/1 var(--mono);box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.mk-hotel{width:30px;height:30px;border-radius:50%;background:var(--sun);border:3px solid #fff;display:grid;place-items:center;color:var(--navy);box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.mk-hotel svg{width:15px;height:15px;stroke-width:2.4}
+.mk-me{width:18px;height:18px;border-radius:50%;background:#2F7FD8;border:3px solid #fff;box-shadow:0 0 0 8px rgba(47,127,216,.2)}
+.mk-pin{width:30px;height:30px;border-radius:50% 50% 50% 4px;transform:rotate(-45deg);background:#fff;border:2px solid var(--navy);display:grid;place-items:center;box-shadow:0 4px 10px rgba(16,27,59,.22)}
+.mk-pin svg{transform:rotate(45deg);width:14px;height:14px;color:var(--navy)}
+.mk-pin.in{background:var(--navy)}.mk-pin.in svg{color:var(--sun)}
+.mk-pin.sel{background:var(--sun);border-color:var(--sun)}.mk-pin.sel svg{color:var(--navy)}
+.mk-dot{width:12px;height:12px;border-radius:50%;background:var(--sea);border:2px solid #fff}
+.explore .ex-top,.explore .ex-card,.explore .ex-legend{z-index:500}
+.explore .leaflet-top.leaflet-left{top:112px;left:auto;right:4px}
+
+/* barra de abas e listas com links no lugar de botões */
+.tabbar a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:700;color:var(--faint);padding:6px 0;position:relative}
+.tabbar a.on{color:var(--navy)}
+a.li{color:inherit}
+
+/* telas do app que não existiam no protótipo */
+.res .rm-act{display:flex;flex-direction:column;gap:4px}
+.res .rm-act button{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:var(--faint)}
+.res .rm-act button:hover{background:var(--bg);color:var(--coral)}
+.res .rm-act svg{width:16px;height:16px}
+.photo-prev{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.near{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);width:100%;text-align:left}
+.near:last-child{border:0}
+.pub{background:var(--bg);overflow:auto;height:100%}
+.pub-in{max-width:720px;margin:0 auto;padding:0 0 40px}
+.readonly .card-stop .acts{display:none}
+.tv .viewing{background:rgba(255,255,255,.06);border-radius:14px;padding:10px 12px;font-size:12.5px;color:#B7C0DA;margin-top:12px}
+.weather{display:flex;gap:6px;align-items:center;justify-content:flex-end;color:#B7C0DA;font-size:12px}
+.weather svg{width:16px;height:16px}
+
+/* painel */
+.side a.nv{display:flex;align-items:center;gap:11px;padding:10px;border-radius:11px;font-weight:600;font-size:13.5px;white-space:nowrap}
+.side a.nv:hover{background:rgba(255,255,255,.05);color:#fff}
+.side a.nv.on{background:var(--navy2);color:#fff}
+.side a.nv.on svg{color:var(--sun)}
+.mob-nav a{display:flex;align-items:center;gap:6px;color:#B7C0DA;font-weight:700;font-size:12.5px;padding:8px 12px;border-radius:99px;white-space:nowrap;background:rgba(255,255,255,.06)}
+.mob-nav a.on{background:var(--sun);color:var(--sun-ink)}
+.mob-nav a svg{width:16px;height:16px}
+@media (max-width:760px){.mob-nav{padding-top:14px}}
+.empty-row td{text-align:center;color:var(--muted);padding:26px}
+.modal-b .lmap{height:200px;border-radius:14px;overflow:hidden;margin-bottom:14px}
+.temp-pass{font-family:var(--mono);background:var(--sun-bg);color:#6B4A00;padding:10px 12px;border-radius:12px;font-size:15px;margin:8px 0;word-break:break-all}
