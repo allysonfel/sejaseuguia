@@ -48,9 +48,13 @@ const mapDest = (r: DestRow): Destination => ({
   id: r.id, nome: r.nome, pais: r.pais, lat: r.lat, lng: r.lng, moeda: r.moeda, updateFreq: r.update_freq, cor1: r.cor1, cor2: r.cor2,
 });
 
-export async function listDestinations(): Promise<Destination[]> {
+/** published: só os que já têm lugar liberado (os recém-importados esperam a revisão da equipe). */
+export async function listDestinations(opts: { published?: boolean } = {}): Promise<Destination[]> {
   await ensureSchema();
-  return (await sql<DestRow[]>`SELECT * FROM destinations ORDER BY nome`).map(mapDest);
+  const rows = opts.published
+    ? await sql<DestRow[]>`SELECT * FROM destinations d WHERE EXISTS (SELECT 1 FROM pois p WHERE p.destination_id = d.id AND p.active) ORDER BY nome`
+    : await sql<DestRow[]>`SELECT * FROM destinations ORDER BY nome`;
+  return rows.map(mapDest);
 }
 
 export async function getDestination(id: number): Promise<Destination | null> {

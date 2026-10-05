@@ -190,6 +190,13 @@ async function createSchema() {
       user_id INT REFERENCES users(id) ON DELETE SET NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    -- Lugares importados que a equipe descartou: a próxima importação não traz de volta.
+    CREATE TABLE IF NOT EXISTS import_skips (
+      destination_id INT NOT NULL REFERENCES destinations(id) ON DELETE CASCADE,
+      nome TEXT NOT NULL,
+      PRIMARY KEY (destination_id, nome)
+    );
   `);
 
   await sql`

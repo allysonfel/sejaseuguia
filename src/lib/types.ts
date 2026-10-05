@@ -215,4 +215,4 @@ export const REPLAN_LABELS: Record<ReplanKind, string> = {
 };
 
 export const POI_CATS = ["Atração", "Museu", "Restaurante", "Gastronomia", "Experiência", "Parque", "Compras", "Vida noturna"];
-export const POI_SOURCES = ["Curadoria", "Google Places", "OpenStreetMap"];
+export const POI_SOURCES = ["Curadoria", "Google Places", "OpenStreetMap", "Wikidata"];

@@ -9,7 +9,7 @@ export default async function Explorar() {
   const trip = pickActiveTrip(await listTripsForUser(u));
   const rules = await getRules();
   if (!trip) {
-    const dest = (await listDestinations())[0];
+    const dest = (await listDestinations({ published: true }))[0];
     const pois = dest ? await listPois(dest.id, { forEngine: true }) : [];
     return <Explore trip={null} pois={Object.fromEntries(pois.map((p) => [p.id, p]))} profile={u.profile} rules={rules} center={dest ?? { lat: 0, lng: 0, nome: "" }} dayIdx={0} geo={u.prefs.location} />;
   }

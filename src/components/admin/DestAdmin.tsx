@@ -14,6 +14,7 @@ const LeafletMap = dynamic(() => import("@/components/LeafletMap"), { ssr: false
 type D = Destination & { stats: { pois: number; stale: number; trips: number; reviewed: string | null } };
 type Form = { id: number | null; nome: string; pais: string; lat: number | null; lng: number | null; moeda: string; updateFreq: string; cor1: string; cor2: string };
 type Hit = { nome: string; endereco: string; lat: number; lng: number };
+type Imp = { id: number; nome: string; raio: string; busy: boolean; res: { atracoes: number; restaurantes: number; repetidos: number; avisos: string[] } | null; err: string | null };
 
 export default function DestAdmin({ dests, requests }: { dests: D[]; requests: { termo: string; c: number }[] }) {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function DestAdmin({ dests, requests }: { dests: D[]; requests: {
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [imp, setImp] = useState<Imp | null>(null);
 
   const open = (d: D | null, nome = "") => {
     setErr(null);
@@ -44,8 +46,12 @@ export default function DestAdmin({ dests, requests }: { dests: D[]; requests: {
     setErr(null);
     try {
       if (form.id) await api("/api/admin/destinations/" + form.id, { method: "PUT", body: form });
-      else await api("/api/admin/destinations", { body: form });
-      toast(form.id ? "Destino salvo" : "Destino criado. Agora cadastre os lugares dele");
+      else {
+        // Destino novo: já oferece trazer os lugares dele.
+        const r = await api<{ id: number }>("/api/admin/destinations", { body: form });
+        setImp({ id: r.id, nome: form.nome, raio: "8", busy: false, res: null, err: null });
+      }
+      if (form.id) toast("Destino salvo");
       setForm(null);
       router.refresh();
     } catch (e) {
@@ -54,6 +60,18 @@ export default function DestAdmin({ dests, requests }: { dests: D[]; requests: {
     setBusy(false);
   }
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => f && { ...f, [k]: v });
+
+  async function runImport() {
+    if (!imp) return;
+    setImp({ ...imp, busy: true, err: null, res: null });
+    try {
+      const res = await api<NonNullable<Imp["res"]>>("/api/admin/destinations/" + imp.id + "/import", { body: { raio: Number(imp.raio) } });
+      setImp({ ...imp, busy: false, res });
+      router.refresh();
+    } catch (e) {
+      setImp({ ...imp, busy: false, err: (e as Error).message });
+    }
+  }
 
   return (
     <>
@@ -81,6 +99,7 @@ export default function DestAdmin({ dests, requests }: { dests: D[]; requests: {
               {d.stats.stale > 0 && <div style={{ marginTop: 8 }}><span className="badge b-coral">{d.stats.stale} desatualizados</span></div>}
               <div className="row" style={{ marginTop: 12, gap: 8 }}>
                 <Link className="btn btn-ghost btn-sm" style={{ flex: 1 }} href={"/admin/lugares?dest=" + d.id}>Ver lugares</Link>
+                <button className="btn btn-ghost btn-sm" onClick={() => setImp({ id: d.id, nome: d.nome, raio: "8", busy: false, res: null, err: null })} title="Importar lugares de dados abertos"><Icon name="download" />Importar</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => open(d)} title="Editar" aria-label="Editar destino"><Icon name="edit" /></button>
               </div>
             </div>
@@ -101,6 +120,54 @@ export default function DestAdmin({ dests, requests }: { dests: D[]; requests: {
           ))}
         </div>
       </div>
+
+      {imp && (
+        <div className="modal-bg" onClick={(e) => e.target === e.currentTarget && !imp.busy && setImp(null)}>
+          <div className="modal">
+            <div className="modal-h"><h3>Importar lugares de {imp.nome}</h3>{!imp.busy && <button onClick={() => setImp(null)} aria-label="Fechar"><Icon name="close" /></button>}</div>
+            <div className="modal-b">
+              {imp.err && <div className="err">{imp.err}</div>}
+              {imp.res ? (
+                <>
+                  <div className="okmsg">
+                    {imp.res.atracoes} atrações e {imp.res.restaurantes} restaurantes importados
+                    {imp.res.repetidos ? " (" + imp.res.repetidos + " já existiam e ficaram de fora)" : ""}.
+                  </div>
+                  {imp.res.avisos.map((a) => <div key={a} className="err" style={{ background: "var(--sun-bg)", color: "#6B4A00" }}>{a}</div>)}
+                  <p className="muted" style={{ fontSize: 13 }}>
+                    Tudo entrou <b>desativado</b>. Revise preço, horário, reserva e dicas e libere os lugares para os roteiros.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>
+                    Busca as atrações mais conhecidas ao redor do centro do destino no Wikidata, com nome e história em português
+                    (Wikipédia), e restaurantes perto delas no OpenStreetMap. Nada vai para os roteiros antes da revisão da equipe.
+                  </p>
+                  <div className="field">
+                    <label>Raio a partir do centro (km)</label>
+                    <input className="input mono" inputMode="numeric" value={imp.raio} disabled={imp.busy} onChange={(e) => setImp({ ...imp, raio: e.target.value.replace(/\D/g, "") })} />
+                  </div>
+                  {imp.busy && <div className="okmsg">Buscando lugares… pode levar até 3 minutos em cidades grandes.</div>}
+                </>
+              )}
+            </div>
+            <div className="modal-f">
+              {imp.res ? (
+                <>
+                  <button className="btn btn-ghost" onClick={() => setImp(null)}>Fechar</button>
+                  <Link className="btn btn-sun" href={"/admin/lugares?dest=" + imp.id + "&status=off"}>Revisar lugares</Link>
+                </>
+              ) : (
+                <>
+                  <button className="btn btn-ghost" onClick={() => setImp(null)} disabled={imp.busy}>{imp.busy ? "Aguarde" : "Agora não"}</button>
+                  <button className="btn btn-sun" onClick={runImport} disabled={imp.busy}><Icon name="download" />{imp.busy ? "Importando…" : "Importar"}</button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {form && (
         <div className="modal-bg" onClick={(e) => e.target === e.currentTarget && setForm(null)}>

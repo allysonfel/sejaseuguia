@@ -12,7 +12,7 @@ import { POI_CATS, POI_SOURCES, type Destination, type Poi } from "@/lib/types";
 const LeafletMap = dynamic(() => import("@/components/LeafletMap"), { ssr: false, loading: () => <div className="lmap" /> });
 
 const WD = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-const SRC_BADGE: Record<string, string> = { Curadoria: "b-violet", "Google Places": "b-navy", OpenStreetMap: "b-grey" };
+const SRC_BADGE: Record<string, string> = { Curadoria: "b-violet", "Google Places": "b-navy", OpenStreetMap: "b-grey", Wikidata: "b-sea" };
 
 type Form = {
   id: number | null; nome: string; cat: string; bairro: string; lat: number | null; lng: number | null; dur: string;
@@ -64,6 +64,29 @@ export default function PoisAdmin({ destinations, dest, pois, cat, q, status }: 
     }
   }
 
+  async function discard(p: Poi) {
+    if (!confirm("Descartar " + p.nome + "? Ele sai da lista e não volta nas próximas importações.")) return;
+    try {
+      await api("/api/admin/pois/" + p.id, { method: "DELETE" });
+      toast(p.nome + " descartado");
+      router.refresh();
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  }
+
+  // Libera de uma vez o que está na lista filtrada (ex.: os importados, depois da revisão).
+  async function bulkActivate(ids: number[]) {
+    if (!confirm("Liberar " + ids.length + " lugares para os roteiros? Confira se você revisou todos.")) return;
+    try {
+      await api("/api/admin/pois/bulk", { method: "PATCH", body: { ids, active: true } });
+      toast(ids.length + " lugares liberados para os roteiros");
+      router.refresh();
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  }
+
   async function save() {
     if (!form) return;
     setBusy(true);
@@ -99,6 +122,9 @@ export default function PoisAdmin({ destinations, dest, pois, cat, q, status }: 
         <button className={"chip " + (status === "stale" ? "on" : "")} onClick={() => go({ status: "stale" })}>Desatualizados ({stale})</button>
         <button className={"chip " + (status === "off" ? "on" : "")} onClick={() => go({ status: "off" })}>Desativados</button>
         <span style={{ flex: 1 }} />
+        {status === "off" && list.length > 0 && (
+          <button className="btn btn-sun btn-sm" onClick={() => bulkActivate(list.map((p) => p.id))}><Icon name="check" />Liberar {list.length}</button>
+        )}
         <button className="btn btn-navy btn-sm" onClick={() => { setErr(null); setForm(toForm(null)); }}><Icon name="plus" />Novo lugar</button>
       </div>
       <div className="panel">
@@ -125,6 +151,7 @@ export default function PoisAdmin({ destinations, dest, pois, cat, q, status }: 
                       {isStale(p) && p.active && <button className="btn btn-ghost btn-sm" onClick={() => quick(p, { review: true }, p.nome + " revisado e de volta às sugestões")}><Icon name="check" />Revisado</button>}{" "}
                       <button className="btn btn-ghost btn-sm" onClick={() => { setErr(null); setForm(toForm(p)); }} title="Editar" aria-label="Editar"><Icon name="edit" /></button>{" "}
                       <button className="btn btn-ghost btn-sm" onClick={() => quick(p, { active: !p.active }, p.active ? "Lugar desativado" : "Lugar ativado")} title={p.active ? "Desativar" : "Ativar"}>{p.active ? "Desativar" : "Ativar"}</button>
+                      {!p.active && p.source !== "Curadoria" && <>{" "}<button className="btn btn-ghost btn-sm" onClick={() => discard(p)} title="Descartar" aria-label="Descartar"><Icon name="trash" /></button></>}
                     </td>
                   </tr>
                 );

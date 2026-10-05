@@ -6,7 +6,7 @@ import NewTripForm from "./NewTripForm";
 
 export default async function NovaViagem() {
   const u = await requireTraveler();
-  const dests = await listDestinations();
+  const dests = await listDestinations({ published: true });
   return (
     <>
       <AppHeader title="Nova viagem" sub="Passo único" back="/app" avatar={u.avatar} />
