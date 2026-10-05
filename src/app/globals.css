@@ -8,7 +8,7 @@ select.input.full{width:100%;height:48px;border-radius:14px}
 .center-load{display:grid;place-items:center;height:100%;color:var(--muted)}
 
 /* mapas (Leaflet + OpenStreetMap) */
-.lmap{width:100%;height:100%;background:#EDF1F7}
+.lmap{width:100%;height:100%;background:#EDF1F7;isolation:isolate} /* prende os z-index do Leaflet (400+) dentro do mapa, sem cobrir a barra de abas */
 .map-box .lmap{height:300px}
 .pz .lmap{height:150px}
 .explore .lmap{position:absolute;inset:0}
@@ -27,6 +27,7 @@ select.input.full{width:100%;height:48px;border-radius:14px}
 .explore .leaflet-top.leaflet-left{top:112px;left:auto;right:4px}
 
 /* barra de abas e listas com links no lugar de botões */
+.tabbar{position:relative;z-index:1}
 .tabbar a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:700;color:var(--faint);padding:6px 0;position:relative}
 .tabbar a.on{color:var(--navy)}
 a.li{color:inherit}
@@ -58,3 +59,49 @@ a.li{color:inherit}
 .empty-row td{text-align:center;color:var(--muted);padding:26px}
 .modal-b .lmap{height:200px;border-radius:14px;overflow:hidden;margin-bottom:14px}
 .temp-pass{font-family:var(--mono);background:var(--sun-bg);color:#6B4A00;padding:10px 12px;border-radius:12px;font-size:15px;margin:8px 0;word-break:break-all}
+
+/* quiz de perfil (cadastro e "refazer quiz") */
+.qz{display:flex;flex-direction:column;height:100%}
+.qz-body{flex:1;overflow:auto;padding:0 18px 20px}
+.qz-body h2{font-size:26px;margin-bottom:6px}
+.qz-fwd{animation:qzFwd .32s ease-out}
+.qz-back{animation:qzBack .32s ease-out}
+@keyframes qzFwd{from{opacity:0;transform:translateX(28px)}}
+@keyframes qzBack{from{opacity:0;transform:translateX(-28px)}}
+.qz-opt{transition:border-color .15s,background .15s,transform .12s}
+.qz-opt:active{transform:scale(.98)}
+.qz-opt.on .oi{background:var(--navy);color:var(--sun)}
+.qz-check{width:24px;height:24px;border-radius:8px;border:1.5px solid var(--line);display:grid;place-items:center;flex:none;color:transparent}
+.qz-check svg{width:15px;height:15px;stroke-width:2.6}
+.qz-opt.on .qz-check{background:var(--sun);border-color:var(--sun);color:var(--navy)}
+.qz-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.qz-grid .qz-opt{flex-direction:column;align-items:flex-start;margin:0;position:relative;min-height:118px}
+.qz-grid .qz-check{position:absolute;top:12px;right:12px}
+.qz-intro{height:100%;background:var(--navy);color:#fff;display:flex;flex-direction:column;justify-content:space-between;padding:22px 22px 24px;overflow:auto;gap:24px}
+.qz-intro .logo{font-size:19px}
+.qz-intro-m{animation:qzFwd .4s ease-out}
+.qz-intro h1{font-size:36px;font-weight:600;margin:14px 0 10px}
+.qz-intro h1 i{color:var(--sun)}
+.qz-intro p{color:#B7C0DA;margin-bottom:26px;font-size:15px}
+.qz-intro .field label{color:#fff;font-size:14px}
+.qz-intro .input{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:#fff}
+.qz-intro .input::placeholder{color:#8D95AD}
+.qz-intro .input:focus{border-color:var(--sun);box-shadow:0 0 0 3px rgba(255,178,30,.25)}
+.qz-close{background:rgba(255,255,255,.08);border-color:transparent;color:#fff}
+.qz-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,178,30,.15);color:var(--sun);font-weight:700;font-size:12.5px;padding:6px 11px;border-radius:99px}
+.qz-badge svg{width:16px;height:16px}
+.qz-foot{color:#B7C0DA}
+.qz-foot .link{color:var(--sun)}
+.qz-result{background:var(--navy);color:#fff;border-radius:24px;padding:22px 20px;margin-bottom:12px;animation:qzPop .45s cubic-bezier(.2,.9,.3,1.3)}
+@keyframes qzPop{from{opacity:0;transform:scale(.92)}}
+.qz-res-ic{width:56px;height:56px;border-radius:18px;background:var(--sun);color:var(--navy);display:grid;place-items:center;margin-bottom:14px}
+.qz-res-ic svg{width:28px;height:28px;stroke-width:2.1}
+.qz-result small{color:#B7C0DA;font-weight:600}
+.qz-result h2{font-size:30px;color:var(--sun);margin:2px 0 8px}
+.qz-result p{color:#DCE1F0;font-size:14px}
+.qz-res-r{display:flex;gap:8px;align-items:flex-start;margin:12px 0 14px;font-size:13px!important;color:#B7C0DA!important}
+.qz-res-r svg{width:16px;height:16px;color:var(--sun);margin-top:2px}
+.qz-result .chip{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.14);color:#fff;height:30px;font-size:12.5px}
+.qz-redo{gap:6px;margin:0 auto 6px;font-size:13px}
+.qz-redo svg{width:16px;height:16px}
+@media (prefers-reduced-motion:reduce){.qz-fwd,.qz-back,.qz-intro-m,.qz-result{animation:none}}

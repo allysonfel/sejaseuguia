@@ -1,8 +1,10 @@
 "use client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Icon from "@/components/Icon";
 import { api } from "@/lib/client";
+import { QUIZ } from "@/lib/quiz";
 import type { IconName } from "@/lib/icons";
 import { toast } from "@/lib/toast";
 import type { Profile, Ritmo } from "@/lib/types";
@@ -26,7 +28,7 @@ const STEPS = [
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 
-export default function Wizard({ initial, done, first }: { initial: Profile; done: string; first: boolean }) {
+export default function Wizard({ initial, done, first, quizHref }: { initial: Profile; done: string; first: boolean; quizHref: string }) {
   const router = useRouter();
   const [i, setI] = useState(0);
   const [p, setP] = useState<Profile>(initial);
@@ -64,6 +66,13 @@ export default function Wizard({ initial, done, first }: { initial: Profile; don
       <div className="wz" style={{ flex: 1, overflow: "auto", padding: "0 18px 20px" }}>
         <h2>{STEPS[i].t}</h2>
         <p className="muted" style={{ marginBottom: 18 }}>{STEPS[i].s}</p>
+        {i === 0 && (
+          <Link className="disc-card" href={quizHref} style={{ marginBottom: 16 }}>
+            <span className="dc-ic"><Icon name="spark" /></span>
+            <span style={{ flex: 1 }}><b>Prefere responder um quiz?</b><small>{QUIZ.length} perguntas rápidas e seu perfil se ajusta sozinho</small></span>
+            <Icon name="right" />
+          </Link>
+        )}
         {i === 0 && COMP.map(([o, ic]) => (
           <button key={o} className={"opt " + (p.comp === o ? "on" : "")} onClick={() => setP({ ...p, comp: o })}>
             <span className="oi"><Icon name={ic} /></span><span><b>{o}</b></span>

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Icon from "@/components/Icon";
 import { api } from "@/lib/client";
+import { persona } from "@/lib/quiz";
 import { toast } from "@/lib/toast";
 import type { Profile } from "@/lib/types";
 
@@ -88,7 +89,7 @@ export default function ProfileView({ nome, email, avatar, profile, support, age
         </div>
       </div>
       <div className="box" style={{ padding: "4px 16px" }}>
-        {row("compass", "Perfil de viajante", profile.comp + " · " + profile.ritmo + " · " + profile.orc, "/app/perfil-viajante?voltar=/app/perfil")}
+        {row("compass", "Perfil de viajante · " + persona(profile).nome, profile.comp + " · " + profile.ritmo + " · " + profile.orc, "/app/perfil-viajante?voltar=/app/perfil")}
         {row("map", "Explorar lugares", "Mapa do destino da sua próxima viagem", "/app/explorar")}
         {row("lock", "Privacidade e dados", "Consentimentos, exportar ou excluir", "/app/privacidade")}
         {support && (

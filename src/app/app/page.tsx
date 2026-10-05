@@ -7,6 +7,7 @@ import { requireTraveler } from "@/lib/auth";
 import { listReservations, listTripsForUser, pickActiveTrip, tripStatus } from "@/lib/data";
 import { dayLabel, daysBetween, firstName, longToday, rangeTxt, todayIso } from "@/lib/format";
 import { getNotifications, resIcon } from "@/lib/notifications";
+import { persona } from "@/lib/quiz";
 
 const STATUS_BADGE = { Planejada: "b-sun", "Em andamento": "b-sea", Encerrada: "b-grey" } as const;
 
@@ -20,6 +21,7 @@ export default async function Inicio() {
   const others = trips.filter((t) => t !== active);
   const upcoming = res.filter((r) => r.data && r.data >= today).slice(0, 4);
   const p = u.profile;
+  const style = persona(p);
 
   let count = "";
   if (active) {
@@ -103,7 +105,8 @@ export default async function Inicio() {
           <div className="box" style={{ marginTop: 6, background: "var(--navy)", color: "#fff", borderColor: "var(--navy)" }}>
             <div className="between">
               <div>
-                <b>Seu perfil de viajante</b>
+                <small style={{ color: "#B7C0DA", fontSize: 12 }}>Seu estilo de viajante</small>
+                <b className="serif" style={{ display: "block", fontSize: 19, color: "var(--sun)" }}>{style.nome}</b>
                 <div style={{ color: "#B7C0DA", fontSize: 12.5, marginTop: 2 }}>{p.comp} · {p.ritmo} · {p.orc}</div>
               </div>
               <Link className="btn btn-sun btn-sm" href="/app/perfil-viajante">Ajustar</Link>

@@ -8,12 +8,14 @@ export default async function Entrar({ searchParams }: { searchParams: Promise<{
   const u = await getCurrentUser();
   if (u) redirect(u.kind === "staff" ? "/admin" : "/app");
   const sp = await searchParams;
+  // Links antigos (convites, roteiro compartilhado) ainda apontam pra ?cadastro=1.
+  if (sp.cadastro) redirect("/cadastro");
   return (
     <div className="auth">
       <AuthHero agency={agencyName()} />
       <div className="auth-form">
         <div className="auth-card">
-          <AuthForm agency={agencyName()} initialTab={sp.equipe ? "equipe" : "viajante"} initialMode={sp.cadastro ? "signup" : "login"} />
+          <AuthForm agency={agencyName()} initialTab={sp.equipe ? "equipe" : "viajante"} />
         </div>
       </div>
     </div>
