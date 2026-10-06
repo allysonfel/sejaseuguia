@@ -14,6 +14,20 @@ type Props =
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 
+// Confete do resultado: posições fixas (sem aleatório) para o servidor e o navegador desenharem igual.
+const CONFETTI_COLORS = ["#FFB21E", "#0E9F8E", "#EE4B55", "#6B4EFF", "#FFFFFF"];
+const CONFETTI = Array.from({ length: 16 }, (_, i) => {
+  const ang = (i / 16) * Math.PI * 2;
+  const dist = 70 + ((i * 37) % 50);
+  return {
+    "--x": Math.round(Math.cos(ang) * dist) + "px",
+    "--y": Math.round(Math.sin(ang) * dist - 30) + "px",
+    "--r": ((i * 67) % 360) + "deg",
+    background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    animationDelay: (i % 4) * 40 + "ms",
+  } as React.CSSProperties;
+});
+
 // Quiz de perfil: no cadastro termina criando a conta; no app, regrava o perfil.
 export default function ProfileQuiz(props: Props) {
   const router = useRouter();
@@ -28,6 +42,7 @@ export default function ProfileQuiz(props: Props) {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const advancing = useRef(false);
+  const [tapped, setTapped] = useState<string | null>(null); // opção recém-tocada: anima o "pop"
 
   const total = QUIZ.length;
   const q = step >= 0 && step < total ? QUIZ[step] : null;
@@ -38,11 +53,15 @@ export default function ProfileQuiz(props: Props) {
   const go = (n: number) => {
     setDir(n > step ? "fwd" : "back");
     setErr(null);
+    setTapped(null);
     setStep(n);
   };
 
   function pick(id: string) {
     if (!q || advancing.current) return;
+    setTapped(id);
+    // Toque curto no celular, como nos apps de quiz (ignorado onde não há suporte).
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(8);
     if (q.multi) {
       const cur = answers[q.id] ?? [];
       setAnswers({ ...answers, [q.id]: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] });
@@ -54,7 +73,7 @@ export default function ProfileQuiz(props: Props) {
     setTimeout(() => {
       advancing.current = false;
       go(step + 1);
-    }, 320);
+    }, 420);
   }
 
   async function finish(e: React.FormEvent) {
@@ -117,12 +136,15 @@ export default function ProfileQuiz(props: Props) {
         </div>
         <div className={"qz-body qz-" + dir} key="result">
           <div className="qz-result">
+            <span className="qz-confetti" aria-hidden="true">
+              {CONFETTI.map((c, i) => <i key={i} style={c} />)}
+            </span>
             <span className="qz-res-ic"><Icon name={style.icon} /></span>
             <small>{who}, seu estilo é</small>
             <h2>{style.nome}</h2>
             <p>{style.desc}</p>
             <p className="qz-res-r"><Icon name="clock" />{style.ritmo}</p>
-            <div className="chips">{traits.map((t) => <span key={t} className="chip">{t}</span>)}</div>
+            <div className="chips">{traits.map((t, i) => <span key={t} className="chip" style={{ "--i": i } as React.CSSProperties}>{t}</span>)}</div>
           </div>
           <button type="button" className="link row qz-redo" onClick={() => { setAnswers({}); go(0); }}><Icon name="refresh" />Refazer o quiz</button>
 
@@ -163,11 +185,12 @@ export default function ProfileQuiz(props: Props) {
       <div className={"qz-body qz-" + dir} key={q.id}>
         <h2>{q.title}</h2>
         <p className="muted" style={{ marginBottom: 18 }}>{q.sub}</p>
-        <div className={grid ? "qz-grid" : ""}>
-          {q.options.map((o) => {
+        <div className={(grid ? "qz-grid " : "qz-list ") + (!q.multi && tapped ? "decided" : "")}>
+          {q.options.map((o, i) => {
             const on = sel.includes(o.id);
             return (
-              <button key={o.id} type="button" className={"opt qz-opt " + (on ? "on" : "")} aria-pressed={on} onClick={() => pick(o.id)}>
+              <button key={o.id} type="button" className={"opt qz-opt " + (on ? "on " : "") + (tapped === o.id ? "pop" : "")}
+                style={{ "--i": i } as React.CSSProperties} aria-pressed={on} onClick={() => pick(o.id)}>
                 <span className="oi"><Icon name={o.icon} /></span>
                 <span style={{ flex: 1 }}><b>{o.label}</b>{o.hint && <small>{o.hint}</small>}</span>
                 {q.multi && <span className="qz-check"><Icon name="check" /></span>}
@@ -179,7 +202,7 @@ export default function ProfileQuiz(props: Props) {
       {q.multi && (
         <div className="wz-foot" style={{ gridTemplateColumns: "1fr" }}>
           <button className="btn btn-sun" onClick={() => go(step + 1)} disabled={sel.length < (q.min ?? 0)}>
-            {sel.length === 0 && !q.min ? "Nada disso me incomoda" : "Continuar"}
+            {sel.length === 0 && !q.min ? "Nada disso me incomoda" : <>Continuar{sel.length > 0 && <span className="qz-count" key={sel.length}>{sel.length}</span>}</>}
           </button>
         </div>
       )}

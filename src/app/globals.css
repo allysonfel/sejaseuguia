@@ -68,10 +68,27 @@ a.li{color:inherit}
 .qz-back{animation:qzBack .32s ease-out}
 @keyframes qzFwd{from{opacity:0;transform:translateX(28px)}}
 @keyframes qzBack{from{opacity:0;transform:translateX(-28px)}}
-.qz-opt{transition:border-color .15s,background .15s,transform .12s}
-.qz-opt:active{transform:scale(.98)}
-.qz-opt.on .oi{background:var(--navy);color:var(--sun)}
-.qz-check{width:24px;height:24px;border-radius:8px;border:1.5px solid var(--line);display:grid;place-items:center;flex:none;color:transparent}
+/* opções: entram em cascata, "pop" no toque (estilo Duolingo), as outras esmaecem na resposta única */
+.qz-opt{transition:border-color .2s,background .2s,transform .15s,opacity .25s,box-shadow .25s;animation:qzRise .38s cubic-bezier(.2,.8,.3,1) both;animation-delay:calc(var(--i,0) * 45ms)}
+@keyframes qzRise{from{opacity:0;transform:translateY(12px)}}
+.qz-opt:hover{border-color:#C9D1E4}
+.qz-opt:active{transform:scale(.97)}
+.qz-opt.on{box-shadow:0 6px 18px rgba(16,27,59,.1)}
+.qz-opt .oi{transition:background .2s,color .2s,transform .3s cubic-bezier(.3,1.6,.5,1)}
+.qz-opt.on .oi{background:var(--navy);color:var(--sun);transform:rotate(-6deg) scale(1.08)}
+/* mantém qzRise na lista: trocar só o nome reiniciaria a entrada do cartão quando o pop sai */
+.qz-opt.pop{animation:qzRise .38s cubic-bezier(.2,.8,.3,1) both,qzTap .42s cubic-bezier(.3,1.5,.5,1);animation-delay:calc(var(--i,0) * 45ms),0s}
+@keyframes qzTap{0%{transform:scale(.97);box-shadow:0 0 0 0 rgba(255,178,30,.55)}45%{transform:scale(1.025)}100%{transform:scale(1);box-shadow:0 0 0 10px rgba(255,178,30,0)}}
+.qz-list.decided .qz-opt:not(.on){opacity:.45;transform:scale(.98)}
+.qz-check{width:24px;height:24px;border-radius:8px;border:1.5px solid var(--line);display:grid;place-items:center;flex:none;color:transparent;transition:background .2s,border-color .2s}
+.qz-opt.on .qz-check svg path{stroke-dasharray:22;animation:qzDraw .3s ease-out}
+@keyframes qzDraw{from{stroke-dashoffset:22}}
+/* barra de progresso com mola e um brilho passando */
+.qz .prog i{position:relative;overflow:hidden;transition:width .5s cubic-bezier(.3,1.3,.5,1)}
+.qz .prog i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);transform:translateX(-100%);animation:qzShine 2.4s ease-in-out infinite}
+@keyframes qzShine{60%,100%{transform:translateX(100%)}}
+.qz-count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:99px;background:var(--navy);color:var(--sun);font-size:12px;margin-left:8px;animation:qzBump .3s cubic-bezier(.3,1.6,.5,1)}
+@keyframes qzBump{from{transform:scale(.4)}}
 .qz-check svg{width:15px;height:15px;stroke-width:2.6}
 .qz-opt.on .qz-check{background:var(--sun);border-color:var(--sun);color:var(--navy)}
 .qz-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -92,16 +109,25 @@ a.li{color:inherit}
 .qz-badge svg{width:16px;height:16px}
 .qz-foot{color:#B7C0DA}
 .qz-foot .link{color:var(--sun)}
-.qz-result{background:var(--navy);color:#fff;border-radius:24px;padding:22px 20px;margin-bottom:12px;animation:qzPop .45s cubic-bezier(.2,.9,.3,1.3)}
+.qz-result{background:var(--navy);color:#fff;border-radius:24px;padding:22px 20px;margin-bottom:12px;animation:qzPop .45s cubic-bezier(.2,.9,.3,1.3);position:relative;overflow:hidden}
+/* confete curto saindo do ícone do resultado */
+.qz-confetti{position:absolute;left:48px;top:48px;pointer-events:none}
+.qz-confetti i{position:absolute;width:7px;height:11px;border-radius:2px;opacity:0;animation:qzBurst 1.1s cubic-bezier(.15,.7,.3,1) forwards}
+@keyframes qzBurst{0%{opacity:1;transform:translate(0,0) rotate(0)}70%{opacity:1}100%{opacity:0;transform:translate(var(--x),calc(var(--y) + 40px)) rotate(var(--r))}}
 @keyframes qzPop{from{opacity:0;transform:scale(.92)}}
-.qz-res-ic{width:56px;height:56px;border-radius:18px;background:var(--sun);color:var(--navy);display:grid;place-items:center;margin-bottom:14px}
+.qz-res-ic{width:56px;height:56px;border-radius:18px;background:var(--sun);color:var(--navy);display:grid;place-items:center;margin-bottom:14px;position:relative;animation:qzBadge .6s cubic-bezier(.3,1.6,.5,1) .1s both}
+@keyframes qzBadge{from{transform:scale(0) rotate(-20deg)}}
 .qz-res-ic svg{width:28px;height:28px;stroke-width:2.1}
 .qz-result small{color:#B7C0DA;font-weight:600}
 .qz-result h2{font-size:30px;color:var(--sun);margin:2px 0 8px}
 .qz-result p{color:#DCE1F0;font-size:14px}
 .qz-res-r{display:flex;gap:8px;align-items:flex-start;margin:12px 0 14px;font-size:13px!important;color:#B7C0DA!important}
 .qz-res-r svg{width:16px;height:16px;color:var(--sun);margin-top:2px}
-.qz-result .chip{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.14);color:#fff;height:30px;font-size:12.5px}
+.qz-result .chip{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.14);color:#fff;height:30px;font-size:12.5px;animation:qzRise .35s cubic-bezier(.2,.8,.3,1) both;animation-delay:calc(var(--i,0) * 50ms + .35s)}
 .qz-redo{gap:6px;margin:0 auto 6px;font-size:13px}
 .qz-redo svg{width:16px;height:16px}
-@media (prefers-reduced-motion:reduce){.qz-fwd,.qz-back,.qz-intro-m,.qz-result{animation:none}}
+@media (prefers-reduced-motion:reduce){
+  .qz-fwd,.qz-back,.qz-intro-m,.qz-result,.qz-opt,.qz-opt.pop,.qz-opt.on .qz-check svg path,.qz .prog i::after,.qz-count,.qz-res-ic,.qz-result .chip{animation:none}
+  .qz-confetti{display:none}
+  .qz-opt.on .oi{transform:none}
+}
