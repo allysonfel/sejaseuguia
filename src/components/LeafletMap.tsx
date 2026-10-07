@@ -61,6 +61,8 @@ export default function LeafletMap({ center, zoom = 13, markers = [], route, rad
         zoomControl: interactive, attributionControl: true, dragging: interactive, scrollWheelZoom: interactive,
         doubleClickZoom: interactive, touchZoom: interactive, keyboard: interactive,
       }).setView([center.lat, center.lng], zoom);
+      // Sem o prefixo "Leaflet"; o crédito do OpenStreetMap fica porque a licença dos mapas exige.
+      m.attributionControl.setPrefix(false);
       Lf.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(m);

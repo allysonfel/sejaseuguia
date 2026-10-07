@@ -137,3 +137,7 @@ a.li{color:inherit}
   .stage{background:var(--bg)}
   .app{max-width:none}
 }
+
+/* crédito do OpenStreetMap (exigido pela licença dos mapas) bem discreto */
+.leaflet-control-attribution{font-size:9px!important;line-height:1.4;padding:0 5px!important;background:rgba(255,255,255,.55)!important;color:#8D95AD!important;border-top-left-radius:6px}
+.leaflet-control-attribution a{color:#8D95AD!important;text-decoration:none}
