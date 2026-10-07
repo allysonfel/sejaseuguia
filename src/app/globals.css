@@ -131,3 +131,9 @@ a.li{color:inherit}
   .qz-confetti{display:none}
   .qz-opt.on .oi{transform:none}
 }
+
+/* celular e tablet: o app ocupa a tela inteira (a coluna de 420px com fundo escuro fica só no computador) */
+@media (max-width:760px){
+  .stage{background:var(--bg)}
+  .app{max-width:none}
+}
