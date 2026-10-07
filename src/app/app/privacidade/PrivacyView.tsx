@@ -46,6 +46,12 @@ export default function PrivacyView({ prefs: initial, deletePending, consent }: 
           </div>
         ))}
       </div>
+      <div className="box" style={{ fontSize: 13, lineHeight: 1.6 }}>
+        <div className="box-t">Fotos do O que é esse lugar?</div>
+        <p>Quando você tira uma foto para descobrir um lugar, ela é enviada a um serviço de inteligência artificial de outra empresa (Z.ai ou Groq) para reconhecer o que aparece nela. Junto vai só a lista de lugares cadastrados perto de você, não a sua localização exata.</p>
+        <p style={{ marginTop: 8 }}>A foto não fica guardada no Seja Seu Guia: ela é usada só para essa resposta. Esses serviços podem usar o que recebem para melhorar os modelos deles, então evite fotografar pessoas, documentos ou qualquer coisa pessoal.</p>
+        <p style={{ marginTop: 8 }}>Prefere não enviar fotos? Use o botão Só ver o que está perto de mim: ele usa apenas a localização.</p>
+      </div>
       <a className="btn btn-ghost btn-block" href="/api/me/export" download><Icon name="download" />Exportar meus dados</a>
       <button className="btn btn-ghost btn-block" style={{ marginTop: 8, color: "var(--coral)" }} onClick={askDelete} disabled={pending}>
         <Icon name="trash" />{pending ? "Exclusão pedida, aguardando a equipe" : "Excluir minha conta"}
