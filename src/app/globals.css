@@ -243,3 +243,107 @@ input[type="date"]::-webkit-date-and-time-value,input[type="time"]::-webkit-date
 /* painel de destinos: importação automática */
 .fila-auto{display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:14px;flex-wrap:wrap}
 .fila-auto-m{flex:1;min-width:240px;display:flex;flex-direction:column;gap:2px;font-size:13px}
+
+/* ============================================================ movimento do app
+   Mesma linguagem do quiz em todas as telas: entrada em cascata, toque que afunda,
+   trocas que vêm do lado certo e comemoração nos momentos que importam.
+   Entradas usam "backwards": depois de animar não sobra transform (não quebra posição de nada). */
+:root{--mola:cubic-bezier(.3,1.5,.5,1);--suave:cubic-bezier(.2,.8,.3,1)}
+
+/* telas: cabeçalho e blocos entram um depois do outro */
+.a-head{animation:qzFade .3s ease backwards}
+@keyframes qzFade{from{opacity:0}}
+.a-body>.pad>*:not(.gen),.a-body>.pad>form>*{animation:qzRise .4s var(--suave) backwards}
+.a-body>.pad>*:nth-child(2),.a-body>.pad>form>*:nth-child(2){animation-delay:50ms}
+.a-body>.pad>*:nth-child(3),.a-body>.pad>form>*:nth-child(3){animation-delay:100ms}
+.a-body>.pad>*:nth-child(4),.a-body>.pad>form>*:nth-child(4){animation-delay:150ms}
+.a-body>.pad>*:nth-child(5),.a-body>.pad>form>*:nth-child(5){animation-delay:200ms}
+.a-body>.pad>*:nth-child(6),.a-body>.pad>form>*:nth-child(6){animation-delay:250ms}
+.a-body>.pad>*:nth-child(n+7),.a-body>.pad>form>*:nth-child(n+7){animation-delay:300ms}
+.a-body>.pad>.pad>*{animation:qzRise .4s var(--suave) backwards}
+
+/* toque: cards e listas afundam um pouco, como as opções do quiz */
+.trip-hero,.new-trip,.mini-trip,.disc-card,a.li,button.li,.alt,.day,.chip,.ci,.tv-acts>*,.icon-btn{transition:transform .15s var(--mola),background .15s,box-shadow .2s}
+.trip-hero:active,.new-trip:active,.mini-trip:active,.disc-card:active{transform:scale(.975)}
+a.li:active,button.li:active,.ci:active{transform:scale(.985)}
+.alt:active,.day:active,.chip:active,.tv-acts>*:active{transform:scale(.94)}
+.icon-btn:active{transform:scale(.88)}
+.btn:not(.qz-3d):active:not(:disabled){transform:scale(.96)}
+@media (hover:hover){.trip-hero:hover,.mini-trip:hover,.disc-card:hover{transform:translateY(-2px)}}
+/* foto da viagem principal respira devagar */
+.trip-hero .trip-foto{animation:kenBurns 18s ease-in-out infinite alternate}
+@keyframes kenBurns{to{transform:scale(1.08) translate(-1.5%,-1%)}}
+.trip-hero .count{animation:qzBadge .55s var(--mola) .25s backwards}
+
+/* barra de baixo: a aba ativa pula ao chegar e ganha um ponto */
+.tabbar a svg{transition:transform .2s var(--mola)}
+.tabbar a:active svg{transform:scale(.8)}
+.tabbar a.on:not(.mid) svg{animation:abaPula .5s var(--mola)}
+.tabbar a.on:not(.mid)::after{content:"";position:absolute;bottom:-3px;left:50%;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--sun);animation:qzBump .35s var(--mola)}
+@keyframes abaPula{0%{transform:translateY(0)}35%{transform:translateY(-5px) scale(1.12)}100%{transform:none}}
+.tabbar .mid span.r{transition:transform .2s var(--mola),box-shadow .2s}
+.tabbar .mid:active span.r{transform:scale(.9)}
+.tabbar .mid.on span.r{animation:qzTap .5s var(--mola);background:var(--sun);color:var(--navy);box-shadow:0 10px 22px rgba(255,178,30,.45)}
+
+/* viagem: abas e dias entram pelo lado de onde a pessoa veio */
+.mv-fwd{animation:qzFwd .32s var(--suave) backwards}
+.mv-back{animation:qzBack .32s var(--suave) backwards}
+.ttabs button{position:relative;transition:color .2s}
+.ttabs button.on{animation:qzFade .2s}
+.day{transition:transform .15s var(--mola),background .2s,border-color .2s,color .2s}
+.day.on{animation:qzTap .45s var(--mola)}
+.tl .stop,.tl .leg{animation:qzRise .38s var(--suave) backwards;animation-delay:calc(var(--i,0) * 45ms)}
+.card-stop .why{animation:qzRise .28s var(--suave) backwards}
+.day-sum .badge{animation:qzRise .3s var(--suave) backwards}
+.day-sum .badge:nth-child(2){animation-delay:40ms}.day-sum .badge:nth-child(3){animation-delay:80ms}.day-sum .badge:nth-child(4){animation-delay:120ms}
+.banner{animation:qzBalao .4s var(--mola)}
+.banner.festa{align-items:center;background:#FFF7E3;border-color:#F6DDA6;color:#7A4F00}
+.banner.festa b{font-size:15px}
+.banner.festa .act button{color:#7A4F00}
+.alts .alt{animation:qzRise .35s var(--suave) backwards}
+.alts .alt:nth-child(2){animation-delay:60ms}.alts .alt:nth-child(3){animation-delay:120ms}.alts .alt:nth-child(n+4){animation-delay:180ms}
+
+/* modo viagem */
+.now{position:relative}
+.tv .pr i{transition:width .6s var(--suave)}
+.today .it .ck{transition:background .25s,border-color .25s}
+.today .it.agora .ck{animation:qzBadge .5s var(--mola)}
+.today .it.cur .ck{animation:pulsoAgora 1.8s ease-out infinite}
+@keyframes pulsoAgora{0%{box-shadow:0 0 0 0 rgba(255,178,30,.6)}100%{box-shadow:0 0 0 9px rgba(255,178,30,0)}}
+.dia-fim{display:flex;flex-direction:column;align-items:center;text-align:center;animation:qzPop .45s var(--mola)}
+.dia-fim h3{margin-top:8px;color:var(--sun);font-size:24px}
+.dia-fim .gui-contorno{stroke:#fff}
+.dia-fim .gui-sombra{fill:rgba(255,255,255,.12)}
+.festa-ponto{left:50%;top:40px;z-index:2}
+
+/* comemoração na tela toda (fica por cima de tudo, sem pegar toque) */
+.festa-tela{z-index:60}
+
+/* montando o roteiro: Gui trabalhando e passos aparecendo */
+.gen-gui{margin-bottom:18px}
+.gen-gui .gui-contorno{stroke:#fff}
+.gen-gui .gui-sombra{fill:rgba(255,255,255,.12)}
+.gen h2{animation:qzRise .4s var(--suave) .1s backwards}
+.gen .st{animation:qzRise .35s var(--suave) backwards;animation-delay:calc(var(--i,0) * 70ms + .2s)}
+.gen .st.done .c{animation:qzBadge .4s var(--mola)}
+.preparo .gui{margin-top:-4px}
+
+/* folhas de baixo, avisos e estados vazios */
+.sheet{animation:up .34s var(--mola)}
+.sheet>*:not(.grab){animation:qzRise .35s var(--suave) backwards}
+.sheet>*:nth-child(3){animation-delay:40ms}.sheet>*:nth-child(4){animation-delay:80ms}.sheet>*:nth-child(n+5){animation-delay:120ms}
+.empty .ei{animation:flutua 3s ease-in-out infinite}
+@keyframes flutua{50%{transform:translateY(-5px)}}
+.aviso-auto{animation:qzBalao .4s var(--mola) backwards}
+#toast{transition:opacity .2s,transform .4s var(--mola)}
+#toast.show svg{animation:qzBadge .45s var(--mola)}
+.toggle{transition:background .2s}
+.toggle::after{transition:left .25s var(--mola)}
+.ai-fab{animation:qzBadge .5s var(--mola) .4s backwards}
+.ai-fab:active{transform:scale(.9)}
+
+/* quem pediu menos movimento no aparelho: tudo parado, sem confete */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;animation-delay:0s!important;transition-duration:.01ms!important}
+  .festa-tela,.festa-ponto{display:none}
+}

@@ -1,13 +1,16 @@
 "use client";
 import Link from "next/link";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { ChuvaConfete } from "@/components/Festa";
 import Icon from "@/components/Icon";
+import Gui from "@/components/quiz/Gui";
 import TabBar from "@/components/TabBar";
 import {
   addPoi, carryOver, carryPending, fillGap, lateAdj, moveItem, rainSwap, removeAt, saveAdj, schedAll, tiredAdj,
   type Ctx, type ReplanResult,
 } from "@/lib/engine";
 import { shortRange } from "@/lib/format";
+import { somFesta } from "@/lib/sons";
 import { toast } from "@/lib/toast";
 import type { TripAccess } from "@/lib/data";
 import type { Poi, Profile, ReplanKind, Reservation, Rules, Trip, TripMember } from "@/lib/types";
@@ -19,7 +22,7 @@ import ReservationsTab, { AddReservationSheet } from "./ReservationsTab";
 import { useTripEditor } from "./useTripEditor";
 
 type Tab = "roteiro" | "mapa" | "reservas" | "pessoas";
-export type Banner = { t: string; d: string; ai?: boolean };
+export type Banner = { t: string; d: string; ai?: boolean; festa?: boolean };
 
 type Props = {
   trip: Trip & { access: TripAccess };
@@ -73,6 +76,30 @@ export default function TripView(props: Props) {
 
   const d = sdays[day];
 
+  // Animação de troca: aba e dia entram pelo lado de onde a pessoa veio.
+  const tabs: [Tab, string][] = [["roteiro", "Roteiro"], ["mapa", "Mapa"], ["reservas", "Reservas"], ["pessoas", "Pessoas"]];
+  const [mov, setMov] = useState<"" | "mv-fwd" | "mv-back">("");
+  const irTab = (k: Tab) => {
+    const de = tabs.findIndex(([x]) => x === tab), para = tabs.findIndex(([x]) => x === k);
+    if (de !== para) setMov(para > de ? "mv-fwd" : "mv-back");
+    setTab(k);
+  };
+  const irDia = (i: number) => {
+    if (i !== day) setMov(i > day ? "mv-fwd" : "mv-back");
+    setDay(i);
+  };
+
+  // Roteiro recém-montado: chuva de confete e fanfarra, uma vez.
+  const [festa, setFesta] = useState(!!props.initialBanner?.festa);
+  useEffect(() => {
+    if (!festa) return;
+    somFesta();
+    // tira o ?novo=1 da barra: recarregar a página não comemora de novo
+    window.history.replaceState(null, "", window.location.pathname);
+    const t = setTimeout(() => setFesta(false), 2800);
+    return () => clearTimeout(t);
+  }, [festa]);
+
   function apply(r: ReplanResult | null, kind: ReplanKind, title: string, activity?: string) {
     if (!r) return;
     ed.commit(r.days, kind, activity ?? title + " no Dia " + (day + 1));
@@ -115,11 +142,9 @@ export default function TripView(props: Props) {
       const r = carryOver(ed.days, day, ids, ctx);
       apply(r, "carry", "Levado para " + sdays[day + 1].label);
       setCarryOff({});
-      setDay(day + 1);
+      irDia(day + 1);
     },
   };
-
-  const tabs: [Tab, string][] = [["roteiro", "Roteiro"], ["mapa", "Mapa"], ["reservas", "Reservas"], ["pessoas", "Pessoas"]];
 
   return (
     <>
@@ -137,25 +162,25 @@ export default function TripView(props: Props) {
               <small>{shortRange(trip.inicio, trip.fim)} · Ponto Zero: {trip.hotel.nome}</small>
             </div>
             <Link className="icon-btn" href={"/app/viagem/" + trip.id + "/modo-viagem"} title="Modo viagem"><Icon name="nav" /></Link>
-            <button className="icon-btn" title="Compartilhar" onClick={() => (trip.access === "owner" ? setSheet("share") : setTab("pessoas"))}><Icon name="share" /></button>
+            <button className="icon-btn" title="Compartilhar" onClick={() => (trip.access === "owner" ? setSheet("share") : irTab("pessoas"))}><Icon name="share" /></button>
           </div>
           <div className="ttabs">
-            {tabs.map(([k, l]) => <button key={k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>)}
+            {tabs.map(([k, l]) => <button key={k} className={tab === k ? "on" : ""} onClick={() => irTab(k)}>{l}</button>)}
           </div>
         </div>
 
         {(tab === "roteiro" || tab === "mapa") && (
           <div className="days">
             {sdays.map((x, i) => (
-              <button key={i} className={"day " + (day === i ? "on" : "")} onClick={() => { setDay(i); setOpen(null); setAlts(null); }}>
+              <button key={i} className={"day " + (day === i ? "on" : "")} onClick={() => { irDia(i); setOpen(null); setAlts(null); }}>
                 <b>Dia {i + 1}</b><small>{x.label}</small>
               </button>
             ))}
           </div>
         )}
         {banner && (tab === "roteiro" || tab === "mapa") && (
-          <div className={"banner" + (banner.ai ? " ai" : "")}>
-            <Icon name={banner.ai ? "spark" : "refresh"} />
+          <div className={"banner" + (banner.ai ? " ai" : "") + (banner.festa ? " festa" : "")} key={banner.t + banner.d}>
+            {banner.festa ? <Gui humor={festa ? "festa" : "feliz"} size={44} /> : <Icon name={banner.ai ? "spark" : "refresh"} />}
             <div style={{ flex: 1 }}>
               <b>{banner.t}</b>{banner.d}
               <div className="act">
@@ -177,6 +202,7 @@ export default function TripView(props: Props) {
           </div>
         )}
 
+        <div key={tab + ":" + (tab === "roteiro" || tab === "mapa" ? day : "")} className={mov}>
         {tab === "roteiro" && d && (
           <DayTimeline
             d={d} next={sdays[day + 1]} ctx={ctx} moeda={trip.moeda} canEdit={canEdit} open={open} setOpen={setOpen}
@@ -196,9 +222,11 @@ export default function TripView(props: Props) {
             shareUrl={props.shareUrl} onInvite={() => setSheet("share")}
           />
         )}
+        </div>
         <div style={{ height: 84 }} />
       </div>
       <TabBar />
+      {festa && <ChuvaConfete />}
 
       {sheet === "addres" && (
         <AddReservationSheet
@@ -218,7 +246,7 @@ export default function TripView(props: Props) {
           ctx={ctx} days={ed.days} dayIdx={day} moeda={trip.moeda} onClose={() => setChat(false)}
           onApply={(preview, kind, label) => {
             ed.commit(preview, kind, "Assistente: " + label);
-            setTab("roteiro");
+            irTab("roteiro");
             setOpen(null);
             setAlts(null);
             setBanner({ ai: true, t: "Ajuste feito pelo assistente", d: label + ". O Dia " + (day + 1) + " foi recalculado e validado pelo motor de roteiros." });

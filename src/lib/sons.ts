@@ -1,7 +1,7 @@
 "use client";
-// Sons curtos do quiz, gerados na hora (Web Audio, sem arquivo para baixar).
-// Só tocam depois de um toque da pessoa (regra dos navegadores) e respeitam
-// o botão de som do quiz, guardado no aparelho.
+// Sons curtos do app (quiz, roteiro pronto, atividade e dia concluídos), gerados na hora
+// (Web Audio, sem arquivo para baixar). Só tocam depois de um toque da pessoa (regra dos
+// navegadores) e respeitam o botão de som do quiz e do Perfil, guardado no aparelho.
 
 const CHAVE = "ssg-quiz-som";
 let ctx: AudioContext | null = null;

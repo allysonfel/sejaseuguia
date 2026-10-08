@@ -54,9 +54,10 @@ export default function DayTimeline({ d, next, ctx, moeda, canEdit, open, setOpe
         )}
         {d.items.map((it, i) => {
           const p = it.poi;
+          const cascata = { "--i": Math.min(i, 8) } as React.CSSProperties; // paradas entram uma depois da outra
           return (
             <Fragment key={i + ":" + it.p}>
-              <div className="leg">
+              <div className="leg" style={cascata}>
                 <span />
                 <div className="ln">
                   <Icon name={legIcon(it.tr)} />
@@ -73,7 +74,7 @@ export default function DayTimeline({ d, next, ctx, moeda, canEdit, open, setOpe
                   </div>
                 </div>
               )}
-              <div className="stop">
+              <div className="stop" style={cascata}>
                 <div className="tm">{hm(it.ini)}<small>{hm(it.fim)}</small></div>
                 <div style={{ paddingLeft: 24 }}>
                   <div className={"card-stop" + (it.fixed ? " fixed" : "") + (it.warn || it.late ? " warn" : "")}>

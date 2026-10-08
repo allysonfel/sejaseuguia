@@ -20,7 +20,7 @@ export default async function Viagem({ params, searchParams }: {
   const dayFromToday = tripStatus(trip, today) === "Em andamento" ? daysBetween(trip.inicio, today) : 0;
   const dia = sp.dia != null && Number(sp.dia) >= 0 && Number(sp.dia) < trip.days.length ? Number(sp.dia) : dayFromToday;
   const banner = sp.novo
-    ? { t: "Roteiro pronto", d: `${trip.days.length} ${trip.days.length === 1 ? "dia" : "dias"}, ${sp.a ?? ""} atividades${Number(sp.e) > 0 ? " e " + sp.e + "% menos deslocamento do que visitar tudo na ordem da lista" : ""}.` }
+    ? { festa: true, t: "Roteiro pronto!", d: `${trip.days.length} ${trip.days.length === 1 ? "dia" : "dias"}, ${sp.a ?? ""} atividades${Number(sp.e) > 0 ? " e " + sp.e + "% menos deslocamento do que visitar tudo na ordem da lista" : ""}.` }
     : null;
   return (
     <TripView

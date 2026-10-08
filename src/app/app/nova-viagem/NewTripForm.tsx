@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "@/components/Icon";
+import Gui from "@/components/quiz/Gui";
 import TripArt from "@/components/TripArt";
 import { api } from "@/lib/client";
 import { eligible, travel } from "@/lib/engine";
@@ -207,7 +208,7 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
       </div>
       {dest && !dest.pronto && prep?.status !== "falhou" && (
         <div className="box preparo" role="status">
-          <span className="spin" aria-hidden />
+          <Gui size={42} />
           <div>
             <b>Preparando os lugares de {dest.nome}…</b>
             <div className="muted">
@@ -301,10 +302,10 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
 
       {gen != null && (
         <div className="gen">
-          <div className="logo" style={{ marginBottom: 26 }}><span className="mk"><Icon name="compass" /></span><span>Seja Seu <em>Guia</em></span></div>
+          <div className="gen-gui"><Gui humor={gen >= GEN.length - 1 ? "festa" : "idle"} size={72} /></div>
           <h2>Montando seu roteiro por {dest?.nome}</h2>
           {GEN.map((s, i) => (
-            <div key={i} className={"st " + (i < gen ? "done" : i === gen ? "run" : "")}>
+            <div key={i} className={"st " + (i < gen ? "done" : i === gen ? "run" : "")} style={{ "--i": i } as React.CSSProperties}>
               <span className="c">{i < gen && <Icon name="check" />}</span>{s}
             </div>
           ))}

@@ -1,11 +1,14 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { ChuvaConfete, Explosao } from "@/components/Festa";
 import Icon from "@/components/Icon";
+import Gui from "@/components/quiz/Gui";
 import TabBar from "@/components/TabBar";
 import { mapsLink } from "@/lib/client";
 import { rainSwap, sched, skipItem, stayLonger, type Ctx } from "@/lib/engine";
 import { hm, km1 } from "@/lib/format";
+import { somAcerto, somFesta } from "@/lib/sons";
 import type { TripAccess } from "@/lib/data";
 import type { Poi, Profile, Rules, Trip } from "@/lib/types";
 import AssistantChat from "./AssistantChat";
@@ -47,6 +50,14 @@ export default function TravelMode({ trip, pois, profile, rules, live, dayIdx, n
   const [weather, setWeather] = useState<Weather | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   const [chat, setChat] = useState(false);
+  // "Concluí": confete no card da próxima atividade e, no fim do dia, festa com o Gui
+  const [feitas, setFeitas] = useState(0);
+  const [festa, setFesta] = useState(false);
+  useEffect(() => {
+    if (!festa) return;
+    const t = setTimeout(() => setFesta(false), 2800);
+    return () => clearTimeout(t);
+  }, [festa]);
 
   // relógio só no navegador (evita diferença entre o HTML do servidor e o do cliente)
   useEffect(() => {
@@ -86,6 +97,8 @@ export default function TravelMode({ trip, pois, profile, rules, live, dayIdx, n
     const next = JSON.parse(JSON.stringify(ed.days));
     next[idx].items[k].done = true;
     ed.commit(next, null);
+    setFeitas((n) => n + 1);
+    if (k === d.items.length - 1) { somFesta(); setFesta(true); } else somAcerto();
   }
   function longer() {
     const r = stayLonger(ed.days, idx, k, ctx);
@@ -136,12 +149,19 @@ export default function TravelMode({ trip, pois, profile, rules, live, dayIdx, n
           )}
 
           {d.items.length === 0 && <div className="now" style={{ marginTop: 18 }}><h3>Dia livre</h3><p style={{ color: "#B7C0DA", marginTop: 6 }}>Nada marcado para hoje. Aproveite ou peça sugestões ao assistente.</p></div>}
-          {allDone && <div className="now" style={{ marginTop: 18 }}><h3>Dia concluído</h3><p style={{ color: "#B7C0DA", marginTop: 6 }}>Volta ao hotel: {d.back.min} min {d.back.modo}.</p></div>}
+          {allDone && (
+            <div className="now dia-fim" style={{ marginTop: 18 }}>
+              <Gui humor={festa ? "festa" : "feliz"} size={festa ? 84 : 64} />
+              <h3>Dia concluído!</h3>
+              <p style={{ color: "#B7C0DA", marginTop: 6 }}>{d.items.length} {d.items.length === 1 ? "atividade feita" : "atividades feitas"}. Volta ao hotel: {d.back.min} min {d.back.modo}.</p>
+            </div>
+          )}
 
           {cur && (
             <>
               <div className="lbl">AGORA</div>
-              <div className="now">
+              <div className={"now" + (feitas ? " mv-fwd" : "")} key={k}>
+                {feitas > 0 && <Explosao key={feitas} />}
                 <div className="row" style={{ gap: 6, color: "#B7C0DA", fontSize: 12.5 }}><Icon name="pin" />{cur.poi.bairro}, {trip.destino}</div>
                 <h3 style={{ marginTop: 6 }}>{cur.poi.nome}</h3>
                 <div className="pr"><i style={{ width: prog * 100 + "%" }} /></div>
@@ -191,7 +211,7 @@ export default function TravelMode({ trip, pois, profile, rules, live, dayIdx, n
               <div className="lbl">HOJE</div>
               <div className="today">
                 {d.items.map((it, i) => (
-                  <div key={i} className={"it " + (it.done ? "done" : i === k ? "cur" : "")}>
+                  <div key={i} className={"it " + (it.done ? "done" : i === k ? "cur" : "") + (feitas && it.done && (i === k - 1 || (k < 0 && i === d.items.length - 1)) ? " agora" : "")}>
                     <span className="ck">{it.done && <Icon name="check" />}</span>
                     <span className="mono" style={{ fontSize: 12.5, color: "#B7C0DA", width: 44 }}>{hm(it.ini)}</span>
                     <span style={{ flex: 1 }}>{it.poi.nome}</span>
@@ -208,6 +228,7 @@ export default function TravelMode({ trip, pois, profile, rules, live, dayIdx, n
         </div>
       </div>
       <TabBar />
+      {festa && <ChuvaConfete />}
       {canEdit && (chat ? (
         <AssistantChat
           ctx={ctx} days={ed.days} dayIdx={idx} moeda={trip.moeda} onClose={() => setChat(false)}

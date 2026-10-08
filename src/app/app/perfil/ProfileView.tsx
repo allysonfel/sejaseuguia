@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Icon from "@/components/Icon";
 import { api } from "@/lib/client";
 import { persona } from "@/lib/quiz";
+import { guardarSom, somAcerto, somLigado } from "@/lib/sons";
 import { toast } from "@/lib/toast";
 import type { Profile } from "@/lib/types";
 
@@ -32,6 +33,10 @@ export default function ProfileView({ nome, email, avatar, profile, support, age
   const [photo, setPhoto] = useState(avatar);
   const [name, setName] = useState(nome);
   const [editing, setEditing] = useState(false);
+  // preferência guardada no aparelho (no servidor conta como ligada)
+  const somSalvo = useSyncExternalStore(() => () => {}, somLigado, () => true);
+  const [somAgora, setSom] = useState<boolean | null>(null);
+  const som = somAgora ?? somSalvo;
 
   async function onFile(f: File | undefined) {
     if (!f) return;
@@ -92,6 +97,11 @@ export default function ProfileView({ nome, email, avatar, profile, support, age
         {row("compass", "Perfil de viajante · " + persona(profile).nome, profile.comp + " · " + profile.ritmo + " · " + profile.orc, "/app/perfil-viajante?voltar=/app/perfil")}
         {row("map", "Explorar lugares", "Mapa do destino da sua próxima viagem", "/app/explorar")}
         {row("lock", "Privacidade e dados", "Consentimentos, exportar ou excluir", "/app/privacidade")}
+        <button className="li" style={{ width: "100%", textAlign: "left" }} onClick={() => { guardarSom(!som); setSom(!som); if (!som) somAcerto(); }} aria-pressed={som}>
+          <span className="li-ic"><Icon name="spark" /></span>
+          <div className="li-m"><b>Sons de comemoração</b><small>Roteiro pronto, atividade e dia concluídos</small></div>
+          <span className={"toggle" + (som ? " on" : "")} />
+        </button>
         {support && (
           <a className="li" href={"mailto:" + support}>
             <span className="li-ic"><Icon name="help" /></span>
