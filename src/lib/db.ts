@@ -202,6 +202,40 @@ async function createSchema() {
     ALTER TABLE destinations ADD COLUMN IF NOT EXISTS foto_url TEXT;
     ALTER TABLE destinations ADD COLUMN IF NOT EXISTS foto_credito TEXT;
     ALTER TABLE destinations ADD COLUMN IF NOT EXISTS foto_buscada_em TIMESTAMPTZ;
+
+    -- Catálogo de destinos: cidades do mundo e do Brasil prontas para a busca, mesmo antes de ter
+    -- lugares. Países e estados (regioes) só agrupam cidades: não viram destino de roteiro.
+    CREATE TABLE IF NOT EXISTS regioes (
+      iso TEXT PRIMARY KEY,
+      tipo TEXT NOT NULL,
+      nome TEXT NOT NULL,
+      pais TEXT NOT NULL,
+      lat DOUBLE PRECISION,
+      lng DOUBLE PRECISION,
+      busca TEXT NOT NULL
+    );
+    ALTER TABLE destinations ADD COLUMN IF NOT EXISTS wikidata TEXT;
+    ALTER TABLE destinations ADD COLUMN IF NOT EXISTS pais_iso TEXT;
+    ALTER TABLE destinations ADD COLUMN IF NOT EXISTS uf TEXT;
+    ALTER TABLE destinations ADD COLUMN IF NOT EXISTS populacao INT;
+    ALTER TABLE destinations ADD COLUMN IF NOT EXISTS ranking INT;
+    ALTER TABLE destinations ADD COLUMN IF NOT EXISTS busca TEXT;
+    CREATE UNIQUE INDEX IF NOT EXISTS destinations_wikidata_idx ON destinations (wikidata);
+
+    -- Importação automática: destino escolhido sem lugares entra na fila (fila → importando →
+    -- pronto | poucos | falhou). Lugar importado assim já vale para roteiro, mas fica "não revisado"
+    -- até a equipe mexer nele; horario_estimado = horário padrão da categoria (o OSM não tinha).
+    ALTER TABLE destinations ADD COLUMN IF NOT EXISTS import_status TEXT;
+    ALTER TABLE destinations ADD COLUMN IF NOT EXISTS import_em TIMESTAMPTZ;
+    ALTER TABLE destinations ADD COLUMN IF NOT EXISTS import_erro TEXT;
+    -- 0 = viajante esperando (passa na frente), 1 = pré-carga do painel; escolhas = vezes escolhido na nova viagem
+    ALTER TABLE destinations ADD COLUMN IF NOT EXISTS import_prioridade INT NOT NULL DEFAULT 0;
+    ALTER TABLE destinations ADD COLUMN IF NOT EXISTS escolhas INT NOT NULL DEFAULT 0;
+    ALTER TABLE pois ADD COLUMN IF NOT EXISTS revisado BOOLEAN NOT NULL DEFAULT true;
+    ALTER TABLE pois ADD COLUMN IF NOT EXISTS horario_estimado BOOLEAN NOT NULL DEFAULT false;
+    -- nome que veio dos dados abertos (antes da tradução) e o que falta a IA de texto fazer
+    ALTER TABLE pois ADD COLUMN IF NOT EXISTS nome_original TEXT;
+    ALTER TABLE pois ADD COLUMN IF NOT EXISTS pendente_ia JSONB;
   `);
 
   await sql`
@@ -240,6 +274,11 @@ async function createSchema() {
         ON CONFLICT DO NOTHING`;
     }
   }
+
+  // Catálogo de cidades, países e estados (só aplica de novo quando a versão do catálogo muda).
+  await (await import("./catalogoSeed")).aplicarCatalogo();
+  // Importações que ficaram na fila (ou pela metade, se o app reiniciou) continuam em segundo plano.
+  import("./importFila").then((m) => m.processarFila()).catch((e) => console.error("[fila]", (e as Error).message));
 
   // Destinos sem foto ganham uma em segundo plano (não segura a subida do app).
   import("./destFoto").then((m) => m.preencherFotosFaltantes()).catch((e) => console.error("[fotos]", (e as Error).message));

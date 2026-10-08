@@ -14,7 +14,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       abre = ${p.abre}, fecha = ${p.fecha}, preco = ${p.preco}, reserva = ${p.reserva}, indoor = ${p.indoor}, meal = ${p.meal},
       tags = ${p.tags}, closed_days = ${p.closedDays}, tip = ${p.tip}, historia = ${p.historia},
       curiosidades = ${sql.json(p.curiosidades)}, datas = ${sql.json(p.datas)}, source = ${p.source}, active = ${p.active},
-      reviewed_at = now()
+      reviewed_at = now(), revisado = true, horario_estimado = false
     WHERE id = ${id} RETURNING id`;
   if (!r.length) return fail("Lugar não encontrado.", 404);
   return ok();
@@ -25,7 +25,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   if (!(await apiStaff("pois"))) return fail("Sem acesso.", 403);
   const id = Number((await ctx.params).id);
   const b = await readBody<{ review: boolean; active: boolean }>(req);
-  if (b.review) await sql`UPDATE pois SET reviewed_at = now() WHERE id = ${id}`;
+  if (b.review) await sql`UPDATE pois SET reviewed_at = now(), revisado = true WHERE id = ${id}`;
   if (typeof b.active === "boolean") await sql`UPDATE pois SET active = ${b.active} WHERE id = ${id}`;
   return ok();
 }

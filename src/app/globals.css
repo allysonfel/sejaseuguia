@@ -223,3 +223,23 @@ a.li{color:inherit}
 input.input[type="date"],input.input[type="time"]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;text-align:left}
 input[type="date"]::-webkit-date-and-time-value,input[type="time"]::-webkit-date-and-time-value{text-align:left;margin:0}
 .two>*{min-width:0}
+
+/* busca de destinos da nova viagem (catálogo de cidades, países e estados) */
+.dest-busca{padding:2px 14px;margin-top:8px;max-height:340px;overflow:auto}
+.dest-busca .near>svg:last-child{color:var(--faint)}
+.dest-mini{overflow:hidden;padding:0}
+.dest-mini img{width:100%;height:100%;object-fit:cover;display:block}
+.preparo{display:flex;gap:12px;align-items:flex-start;font-size:13px;background:var(--sun-bg);border-color:#F6DDA6}
+.preparo b{display:block;margin-bottom:2px;color:var(--sun-ink)}
+.preparo .spin{width:20px;height:20px;border-radius:50%;border:3px solid #F6DDA6;border-top-color:var(--sun);animation:spin .8s linear infinite;flex:none;margin-top:1px}
+@media (prefers-reduced-motion:reduce){.preparo .spin{animation-duration:2.4s}}
+
+/* aviso de lugares importados automaticamente (topo da viagem) */
+.aviso-auto{display:flex;gap:10px;align-items:flex-start;margin:12px 18px 0;padding:12px 12px 12px 14px;border-radius:16px;background:var(--violet-bg);color:#3D2E99;font-size:12.5px;line-height:1.45}
+.aviso-auto b{display:block;font-size:13px;margin-bottom:2px}
+.aviso-auto>svg{color:var(--violet);margin-top:1px}
+.aviso-auto button{color:#6E61B8;padding:2px;margin:-2px -2px 0 0}
+
+/* painel de destinos: importação automática */
+.fila-auto{display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:14px;flex-wrap:wrap}
+.fila-auto-m{flex:1;min-width:240px;display:flex;flex-direction:column;gap:2px;font-size:13px}

@@ -2,7 +2,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "@/components/Icon";
 import TripArt from "@/components/TripArt";
 import { api } from "@/lib/client";
@@ -10,17 +10,25 @@ import { eligible, travel } from "@/lib/engine";
 import { addDays, daysBetween } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { useArrastar } from "@/lib/useArrastar";
-import { DEFAULT_RULES, type Destination, type Poi, type Profile } from "@/lib/types";
+import { DEFAULT_RULES, type Destination, type DestinoBusca, type ImportStatus, type Poi, type Profile, type Regiao } from "@/lib/types";
 
 const LeafletMap = dynamic(() => import("@/components/LeafletMap"), { ssr: false, loading: () => <div className="lmap" /> });
 
 type Hit = { nome: string; endereco: string; lat: number; lng: number };
+type Busca = { regioes: Regiao[]; cidades: DestinoBusca[]; titulo?: string };
+type Preparo = { status: ImportStatus | null; lugares: number; posicao: number };
+
+const rotulo = (d: Destination) => d.nome + ", " + (d.uf ? d.uf + ", " : "") + d.pais;
 
 export default function NewTripForm({ destinations, profile, today }: { destinations: Destination[]; profile: Profile; today: string }) {
   const carrossel = useArrastar<HTMLDivElement>();
   const router = useRouter();
-  const [dest, setDest] = useState<Destination | null>(destinations[0] ?? null);
-  const [destTxt, setDestTxt] = useState(destinations[0] ? destinations[0].nome + ", " + destinations[0].pais : "");
+  const [dest, setDest] = useState<DestinoBusca | null>(destinations[0] ? { ...destinations[0], pronto: true, importStatus: null } : null);
+  // destino do catálogo sem lugares: importação automática em andamento
+  const [prep, setPrep] = useState<Preparo | null>(null);
+  const [destTxt, setDestTxt] = useState(destinations[0] ? rotulo(destinations[0]) : "");
+  const [achados, setAchados] = useState<Busca | null>(null);
+  const buscaId = useRef(0);
   const [ini, setIni] = useState(addDays(today, 14));
   const [fim, setFim] = useState(addDays(today, 17));
   const [hotelNome, setHotelNome] = useState("");
@@ -40,13 +48,60 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
     return () => { live = false; };
   }, [dest]);
 
-  function pickDest(txt: string) {
-    setDestTxt(txt);
-    const t = txt.trim().toLowerCase();
-    const d = destinations.find((x) => t === x.nome.toLowerCase() || t === (x.nome + ", " + x.pais).toLowerCase());
-    if (d?.id !== dest?.id) { setHotel(null); setHits(null); setPois([]); }
-    setDest(d ?? null);
+  // Destino sem lugares: pede a importação e acompanha a cada 3 s até ficar pronto (ou falhar).
+  const destId = dest?.id, destPronto = dest?.pronto;
+  useEffect(() => {
+    if (!destId || destPronto) return;
+    let live = true, timer: ReturnType<typeof setTimeout> | undefined;
+    const tick = async (primeira: boolean) => {
+      try {
+        const e = await api<Preparo>(`/api/destinations/${destId}/preparar`, primeira ? { body: {} } : undefined);
+        if (!live) return;
+        setPrep(e);
+        if (e.status === "pronto" || e.status === "poucos") {
+          setDest((d) => (d && d.id === destId ? { ...d, pronto: true, importStatus: e.status } : d));
+          if (e.status === "poucos") toast("Encontramos poucos lugares por lá: o roteiro pode ficar mais curto");
+          return;
+        }
+        if (e.status === "falhou") return;
+      } catch (err) {
+        if (!live) return;
+        setPrep({ status: "falhou", lugares: 0, posicao: 0 });
+        toast((err as Error).message);
+        return;
+      }
+      timer = setTimeout(() => tick(false), 3000);
+    };
+    tick(true);
+    return () => { live = false; clearTimeout(timer); };
+  }, [destId, destPronto]);
+
+  function pickDest(d: DestinoBusca | null) {
+    if (d?.id !== dest?.id) { setHotel(null); setHits(null); setPois([]); setPrep(null); }
+    setDest(d);
     setRequested(false);
+    if (d) { setDestTxt(rotulo(d)); setAchados(null); }
+    // conta a escolha para o ranking do painel (destino sem lugares já conta ao pedir a importação)
+    if (d?.pronto) api(`/api/destinations/${d.id}/preparar`, { body: {} }).catch(() => {});
+  }
+
+  // Busca no catálogo de destinos enquanto digita (cidades, países e estados).
+  function digitar(txt: string) {
+    setDestTxt(txt);
+    if (dest && txt !== rotulo(dest)) pickDest(null);
+    const id = ++buscaId.current;
+    if (txt.trim().length < 2) return setAchados(null);
+    setTimeout(async () => {
+      if (id !== buscaId.current) return;
+      const r = await api<Busca>("/api/destinations/search?q=" + encodeURIComponent(txt.trim())).catch(() => null);
+      if (r && id === buscaId.current) setAchados(r);
+    }, 250);
+  }
+
+  async function abrirRegiao(r: Regiao) {
+    const id = ++buscaId.current;
+    const res = await api<Busca>("/api/destinations/search?regiao=" + r.iso).catch(() => null);
+    if (res && id === buscaId.current) setAchados({ regioes: [], cidades: res.cidades, titulo: (r.tipo === "estado" ? "Cidades em " : "Destinos em ") + r.nome });
   }
 
   async function search() {
@@ -79,6 +134,7 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
   async function generate() {
     setErr(null);
     if (!dest) return setErr("Escolha um destino da lista.");
+    if (!dest.pronto) return setErr(prep?.status === "falhou" ? "Ainda não temos os lugares de " + dest.nome + " para montar o roteiro." : "Ainda estamos preparando os lugares de " + dest.nome + ". Só mais alguns segundos.");
     if (!hotel) return setErr("Busque a hospedagem ou toque no mapa para marcar onde ela fica.");
     setGen(0);
     const steps = setInterval(() => setGen((k) => (k == null ? k : Math.min(k + 1, GEN.length - 1))), 380);
@@ -111,8 +167,31 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
     <div className="pad">
       <div className="field">
         <label>Destino</label>
-        <input className="input" list="dests" value={destTxt} onChange={(e) => pickDest(e.target.value)} placeholder="Para onde você vai?" />
-        <datalist id="dests">{destinations.map((d) => <option key={d.id} value={d.nome + ", " + d.pais} />)}</datalist>
+        <input className="input" value={destTxt} onChange={(e) => digitar(e.target.value)} placeholder="Cidade, estado ou país" autoComplete="off" />
+        {achados && (
+          <div className="box dest-busca">
+            {achados.titulo && <div className="box-t" style={{ marginBottom: 2 }}>{achados.titulo}</div>}
+            {!achados.regioes.length && !achados.cidades.length && <div className="near"><small className="muted">Nenhum destino com esse nome.</small></div>}
+            {achados.regioes.map((r) => (
+              <button key={r.iso} className="near" onClick={() => abrirRegiao(r)}>
+                <span className="li-ic"><Icon name={r.tipo === "pais" ? "globe" : "map"} /></span>
+                <span className="li-m"><b>{r.nome}</b><small>{r.tipo === "pais" ? "País" : "Estado · " + r.pais} · {r.cidades} {r.cidades === 1 ? "destino" : "destinos"}</small></span>
+                <Icon name="right" />
+              </button>
+            ))}
+            {achados.cidades.map((d) => (
+              <button key={d.id} className="near" onClick={() => pickDest(d)}>
+                <span className="li-ic dest-mini">
+                  {d.fotoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={d.fotoUrl.replace(/width=\d+/, "width=120")} alt="" loading="lazy" />
+                  ) : <Icon name="pin" />}
+                </span>
+                <span className="li-m"><b>{d.nome}</b><small>{d.uf ? d.uf + " · " : ""}{d.pais}{d.pronto ? "" : " · novo no app"}</small></span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <div className="sec-t dest-cards-t" style={{ marginTop: 0 }}>
         Destinos populares
@@ -120,18 +199,31 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
       </div>
       <div className="dest-cards" ref={carrossel}>
         {destinations.slice(0, 8).map((d) => (
-          <button key={d.id} className={"dcard " + (dest?.id === d.id ? "on" : "")} onClick={() => pickDest(d.nome + ", " + d.pais)} aria-pressed={dest?.id === d.id}>
+          <button key={d.id} className={"dcard " + (dest?.id === d.id ? "on" : "")} onClick={() => pickDest({ ...d, pronto: true, importStatus: null })} aria-pressed={dest?.id === d.id}>
             <TripArt h={200} c1={d.cor1} c2={d.cor2} id={"dc" + d.id} foto={d.fotoUrl} />
             <span><b>{d.nome}</b><small>{d.pais}</small></span>
           </button>
         ))}
       </div>
-      {!dest && destTxt.trim().length > 2 && (
+      {dest && !dest.pronto && prep?.status !== "falhou" && (
+        <div className="box preparo" role="status">
+          <span className="spin" aria-hidden />
+          <div>
+            <b>Preparando os lugares de {dest.nome}…</b>
+            <div className="muted">
+              Buscamos atrações, restaurantes e horários em dados abertos. Leva em torno de um minuto
+              {prep && prep.posicao > 0 ? ` (${prep.posicao} ${prep.posicao === 1 ? "destino" : "destinos"} na frente)` : ""}.
+              Enquanto isso, escolha as datas e a hospedagem.
+            </div>
+          </div>
+        </div>
+      )}
+      {((!dest && !achados && destTxt.trim().length > 2) || (dest && !dest.pronto && prep?.status === "falhou")) && (
         <div className="box" style={{ fontSize: 13 }}>
-          <b>Ainda não montamos roteiros para “{destTxt.trim()}”.</b>
-          <div className="muted" style={{ margin: "4px 0 10px" }}>A equipe da agência vê os destinos mais pedidos e adiciona os próximos.</div>
+          <b>Ainda não conseguimos montar roteiros para “{dest ? dest.nome : destTxt.trim()}”.</b>
+          <div className="muted" style={{ margin: "4px 0 10px" }}>{dest ? "Não achamos lugares suficientes nos dados abertos agora. " : ""}A equipe da agência vê os destinos mais pedidos e adiciona os próximos.</div>
           <button className="btn btn-ghost btn-sm" disabled={requested} onClick={async () => {
-            await api("/api/destination-requests", { body: { termo: destTxt } }).catch(() => {});
+            await api("/api/destination-requests", { body: { termo: dest ? rotulo(dest) : destTxt } }).catch(() => {});
             setRequested(true);
             toast("Pedido registrado. Avisaremos quando esse destino entrar");
           }}>{requested ? "Pedido registrado" : "Quero esse destino"}</button>
@@ -143,7 +235,7 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
         <div className="field"><label>Volta</label><input className="input mono" type="date" min={ini} value={fim} onChange={(e) => setFim(e.target.value)} /></div>
       </div>
 
-      {dest && (
+      {dest && (dest.pronto || prep?.status !== "falhou") && (
         <div className="field">
           <label>Hospedagem, o Ponto Zero da viagem</label>
           <div className="row" style={{ gap: 8 }}>

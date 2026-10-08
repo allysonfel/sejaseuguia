@@ -164,6 +164,7 @@ export default function TravelMode({ trip, pois, profile, rules, live, dayIdx, n
               <div className="next">
                 <small className="muted">Saia às <b className="mono" style={{ color: "var(--ink)" }}>{hm(nx.ini - nx.tr.min - nx.wait)}</b></small>
                 <h3>{nx.poi.nome}</h3>
+                {nx.poi.horarioEstimado && <small className="muted" style={{ display: "block", marginTop: -4, marginBottom: 8 }}>Horário estimado ({nx.poi.abre} às {nx.poi.fecha}): confirme antes de ir.</small>}
                 <div className="kpis3">
                   <div><small>Chegada</small><b>{hm(nx.ini)}</b></div>
                   <div><small>Distância</small><b>{km1(nx.tr.km)} km</b></div>

@@ -46,6 +46,10 @@ export type Poi = {
   source: string;
   reviewedAt: string;
   active: boolean;
+  /** false: veio da importação automática e a equipe ainda não revisou. */
+  revisado?: boolean;
+  /** Horário padrão da categoria (os dados abertos não tinham o horário real). */
+  horarioEstimado?: boolean;
 };
 
 export type Destination = {
@@ -60,7 +64,17 @@ export type Destination = {
   cor2: string;
   fotoUrl: string | null;
   fotoCredito: string | null;
+  /** Sigla do estado, só para cidades do Brasil do catálogo. */
+  uf?: string | null;
 };
+
+/** Resultado da busca de destinos: "pronto" quando já tem lugares liberados para montar roteiro. */
+export type DestinoBusca = Destination & { pronto: boolean; importStatus: ImportStatus | null };
+
+export type ImportStatus = "fila" | "importando" | "pronto" | "poucos" | "falhou";
+
+/** País ou estado do catálogo: agrupa cidades na busca. */
+export type Regiao = { iso: string; tipo: "pais" | "estado"; nome: string; pais: string; cidades: number };
 
 export type Rules = {
   desloc: number;
@@ -218,5 +232,5 @@ export const REPLAN_LABELS: Record<ReplanKind, string> = {
   undo: "Desfazer",
 };
 
-export const POI_CATS = ["Atração", "Museu", "Restaurante", "Gastronomia", "Experiência", "Parque", "Compras", "Vida noturna"];
+export const POI_CATS = ["Atração", "Museu", "Restaurante", "Gastronomia", "Experiência", "Praia", "Parque", "Compras", "Vida noturna"];
 export const POI_SOURCES = ["Curadoria", "Google Places", "OpenStreetMap", "Wikidata"];

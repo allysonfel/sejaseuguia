@@ -2,21 +2,25 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Icon from "@/components/Icon";
+import { normBusca } from "@/lib/busca";
 import { api } from "@/lib/client";
 import { relTime } from "@/lib/format";
 import { toast } from "@/lib/toast";
+import type { ResumoFila } from "@/lib/importFila";
 import type { Destination } from "@/lib/types";
 
 const LeafletMap = dynamic(() => import("@/components/LeafletMap"), { ssr: false, loading: () => <div className="lmap" /> });
 
-type D = Destination & { stats: { pois: number; stale: number; trips: number; reviewed: string | null } };
+type D = Destination & {
+  stats: { pois: number; stale: number; trips: number; reviewed: string | null; autos: number; escolhas: number; import_status: string | null; import_erro: string | null };
+};
 type Form = { id: number | null; nome: string; pais: string; lat: number | null; lng: number | null; moeda: string; updateFreq: string; cor1: string; cor2: string; fotoUrl: string; fotoCredito: string };
 type Hit = { nome: string; endereco: string; lat: number; lng: number };
 type Imp = { id: number; nome: string; raio: string; busy: boolean; res: { atracoes: number; restaurantes: number; repetidos: number; avisos: string[] } | null; err: string | null };
 
-export default function DestAdmin({ dests, requests }: { dests: D[]; requests: { termo: string; c: number }[] }) {
+export default function DestAdmin({ dests, requests, fila: filaInicial }: { dests: D[]; requests: { termo: string; c: number }[]; fila: ResumoFila }) {
   const router = useRouter();
   const [form, setForm] = useState<Form | null>(null);
   const [hits, setHits] = useState<Hit[] | null>(null);
@@ -24,6 +28,56 @@ export default function DestAdmin({ dests, requests }: { dests: D[]; requests: {
   const [busy, setBusy] = useState(false);
   const [imp, setImp] = useState<Imp | null>(null);
   const [buscandoFoto, setBuscandoFoto] = useState(false);
+  // Catálogo: cidades que ainda não têm lugares ficam numa aba própria para não poluir a grade.
+  const [aba, setAba] = useState<"base" | "catalogo">("base");
+  const [filtro, setFiltro] = useState("");
+  const comLugares = dests.filter((d) => d.stats.pois > 0 || d.stats.trips > 0);
+  const catalogo = dests.filter((d) => d.stats.pois === 0 && d.stats.trips === 0);
+  const f = normBusca(filtro);
+  const visiveis = (aba === "base" ? comLugares : [...catalogo].sort((a, b) => b.stats.escolhas - a.stats.escolhas))
+    .filter((d) => !f || normBusca(d.nome, d.pais, d.uf).includes(f));
+  const ranking = dests.filter((d) => d.stats.escolhas > 0).sort((a, b) => b.stats.escolhas - a.stats.escolhas).slice(0, 8);
+
+  // Importação automática: acompanha a fila enquanto houver algo andando e recarrega os cards quando muda.
+  const [fila, setFila] = useState(filaInicial);
+  const [filaBusy, setFilaBusy] = useState(false);
+  const andando = fila.fila > 0 || !!fila.importando;
+  useEffect(() => {
+    if (!andando) return;
+    let ultimo = JSON.stringify(fila);
+    const t = setInterval(async () => {
+      const r = await api<ResumoFila>("/api/admin/destinations/precarga").catch(() => null);
+      if (!r) return;
+      setFila(r);
+      if (JSON.stringify(r) !== ultimo) { ultimo = JSON.stringify(r); router.refresh(); }
+    }, 5000);
+    return () => clearInterval(t);
+  }, [andando]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function preCarga(acao: "iniciar" | "cancelar") {
+    if (acao === "iniciar" && !confirm(`Importar os lugares dos ${fila.semLugares} destinos do catálogo sem lugares? Roda em segundo plano, um destino por vez (pode levar algumas horas). Pedidos de viajantes passam na frente.`)) return;
+    setFilaBusy(true);
+    try {
+      const r = await api<{ n: number; resumo: ResumoFila }>("/api/admin/destinations/precarga", { body: { acao } });
+      setFila(r.resumo);
+      toast(acao === "iniciar" ? `${r.n} destinos na fila` : `${r.n} destinos tirados da fila`);
+      router.refresh();
+    } catch (e) {
+      toast((e as Error).message);
+    }
+    setFilaBusy(false);
+  }
+
+  async function aprovar(d: D) {
+    if (!confirm(`Marcar os ${d.stats.autos} lugares automáticos de ${d.nome} como revisados? A etiqueta "Sugestão automática" sai dos roteiros.`)) return;
+    try {
+      const r = await api<{ n: number }>(`/api/admin/destinations/${d.id}/aprovar`, { body: {} });
+      toast(`${r.n} lugares de ${d.nome} revisados`);
+      router.refresh();
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  }
 
   const open = (d: D | null, nome = "") => {
     setErr(null);
@@ -90,11 +144,36 @@ export default function DestAdmin({ dests, requests }: { dests: D[]; requests: {
 
   return (
     <>
-      <div className="toolbar" style={{ marginBottom: 14, justifyContent: "flex-end" }}>
+      <div className="toolbar" style={{ marginBottom: 14, gap: 8, flexWrap: "wrap" }}>
+        <div className="seg" style={{ margin: 0, minWidth: 300 }}>
+          <button type="button" className={aba === "base" ? "on" : ""} onClick={() => setAba("base")}>Com lugares ({comLugares.length})</button>
+          <button type="button" className={aba === "catalogo" ? "on" : ""} onClick={() => setAba("catalogo")}>Catálogo ({catalogo.length})</button>
+        </div>
+        <input className="input" style={{ maxWidth: 240, height: 40 }} placeholder="Buscar destino" value={filtro} onChange={(e) => setFiltro(e.target.value)} />
+        <span style={{ flex: 1 }} />
         <button className="btn btn-navy btn-sm" onClick={() => open(null)}><Icon name="plus" />Novo destino</button>
       </div>
+      <div className="panel fila-auto">
+        <div className="fila-auto-m">
+          <b>Importação automática</b>
+          <span className="muted">
+            {fila.semLugares} {fila.semLugares === 1 ? "destino" : "destinos"} do catálogo sem lugares
+            {fila.importando ? <> · importando <b>{fila.importando}</b></> : null}
+            {fila.fila ? <> · {fila.fila} na fila{fila.precarga ? ` (${fila.precarga} da pré-carga)` : ""}</> : null}
+            {fila.falhou ? <> · <span style={{ color: "var(--coral)" }}>{fila.falhou} com falha</span></> : null}
+            {fila.automaticos ? <> · {fila.automaticos} lugares automáticos esperando revisão</> : null}
+          </span>
+        </div>
+        {fila.precarga > 0 ? (
+          <button className="btn btn-ghost btn-sm" disabled={filaBusy} onClick={() => preCarga("cancelar")}>Cancelar pré-carga</button>
+        ) : (
+          <button className="btn btn-navy btn-sm" disabled={filaBusy || fila.semLugares === 0} onClick={() => preCarga("iniciar")}><Icon name="download" />Pré-carregar catálogo</button>
+        )}
+      </div>
+
       <div className="dest-grid">
-        {dests.map((d) => (
+        {visiveis.length === 0 && <div className="muted" style={{ fontSize: 13 }}>Nenhum destino aqui{f ? " com esse nome" : ""}.</div>}
+        {visiveis.map((d) => (
           <div key={d.id} className="dest">
             <div className="art">
               {d.fotoUrl ? (
@@ -110,21 +189,45 @@ export default function DestAdmin({ dests, requests }: { dests: D[]; requests: {
               <b>{d.nome}</b>
             </div>
             <div className="bd">
-              <div className="muted" style={{ fontSize: 12 }}>{d.pais} · revisão {d.updateFreq.toLowerCase()}</div>
+              <div className="muted" style={{ fontSize: 12 }}>{d.uf ? d.uf + " · " : ""}{d.pais} · revisão {d.updateFreq.toLowerCase()}</div>
               <div className="m3">
                 <div><small>Lugares</small><b>{d.stats.pois}</b></div>
                 <div><small>Viagens</small><b>{d.stats.trips}</b></div>
                 <div><small>Última revisão</small><b style={{ fontFamily: "var(--sans)", fontSize: 13 }}>{relTime(d.stats.reviewed)}</b></div>
               </div>
               {d.stats.stale > 0 && <div style={{ marginTop: 8 }}><span className="badge b-coral">{d.stats.stale} desatualizados</span></div>}
-              <div className="row" style={{ marginTop: 12, gap: 8 }}>
+              {(d.stats.autos > 0 || d.stats.import_status === "fila" || d.stats.import_status === "importando" || d.stats.import_status === "falhou" || d.stats.escolhas > 0) && (
+                <div className="row" style={{ marginTop: 8, gap: 6, flexWrap: "wrap" }}>
+                  {d.stats.autos > 0 && <span className="badge b-violet">{d.stats.autos} automáticos</span>}
+                  {d.stats.import_status === "fila" && <span className="badge b-grey">Na fila</span>}
+                  {d.stats.import_status === "importando" && <span className="badge b-sun">Importando…</span>}
+                  {d.stats.import_status === "falhou" && d.stats.pois === 0 && <span className="badge b-coral" title={d.stats.import_erro ?? ""}>Importação falhou</span>}
+                  {d.stats.escolhas > 0 && <span className="badge b-navy">{d.stats.escolhas} {d.stats.escolhas === 1 ? "escolha" : "escolhas"}</span>}
+                </div>
+              )}
+              <div className="row" style={{ marginTop: 12, gap: 8, flexWrap: "wrap" }}>
                 <Link className="btn btn-ghost btn-sm" style={{ flex: 1 }} href={"/admin/lugares?dest=" + d.id}>Ver lugares</Link>
+                {d.stats.autos > 0 && <button className="btn btn-ghost btn-sm" onClick={() => aprovar(d)} title="Marcar todos os automáticos como revisados"><Icon name="check" />Aprovar</button>}
                 <button className="btn btn-ghost btn-sm" onClick={() => setImp({ id: d.id, nome: d.nome, raio: "8", busy: false, res: null, err: null })} title="Importar lugares de dados abertos"><Icon name="download" />Importar</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => open(d)} title="Editar" aria-label="Editar destino"><Icon name="edit" /></button>
               </div>
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="panel" style={{ marginTop: 16 }}>
+        <div className="panel-h"><h3>Mais escolhidos na nova viagem</h3></div>
+        <div className="rank">
+          {ranking.length === 0 && <div className="r muted">Nenhum destino escolhido ainda.</div>}
+          {ranking.map((d) => (
+            <div key={d.id} className="r">
+              <b style={{ flex: 1, fontWeight: 600 }}>{d.nome}<span className="muted" style={{ fontWeight: 400 }}> · {d.uf ? d.uf + ", " : ""}{d.pais}</span></b>
+              <span className="mono muted">{d.stats.escolhas} {d.stats.escolhas === 1 ? "escolha" : "escolhas"}</span>
+              <span className="mono muted" style={{ minWidth: 86, textAlign: "right" }}>{d.stats.pois} lugares</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="panel" style={{ marginTop: 16 }}>

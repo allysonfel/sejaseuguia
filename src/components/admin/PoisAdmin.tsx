@@ -139,16 +139,16 @@ export default function PoisAdmin({ destinations, dest, pois, cat, q, status }: 
                 const age = daysSinceReview(p);
                 return (
                   <tr key={p.id} style={p.active ? undefined : { opacity: 0.55 }}>
-                    <td><b>{p.nome}</b>{p.reserva && <span className="badge b-sun" style={{ marginLeft: 6 }}>Reserva</span>}{!p.active && <span className="badge b-grey" style={{ marginLeft: 6 }}>Desativado</span>}</td>
+                    <td><b>{p.nome}</b>{p.reserva && <span className="badge b-sun" style={{ marginLeft: 6 }}>Reserva</span>}{!p.active && <span className="badge b-grey" style={{ marginLeft: 6 }}>Desativado</span>}{p.revisado === false && <span className="badge b-violet" style={{ marginLeft: 6 }} title="Entrou sozinho quando um viajante escolheu o destino. Já aparece nos roteiros.">Automático</span>}</td>
                     <td>{p.cat}</td>
                     <td className="muted">{p.bairro}</td>
-                    <td className="mono">{p.abre === "00:00" && p.fecha === "23:59" ? "Livre" : p.abre + " às " + p.fecha}{p.closedDays.length ? <span className="muted"> · fecha {p.closedDays.map((d) => WD[d]).join(", ")}</span> : null}</td>
+                    <td className="mono">{p.abre === "00:00" && p.fecha === "23:59" ? "Livre" : p.abre + " às " + p.fecha}{p.horarioEstimado && <span className="muted" title="Horário padrão da categoria: confira"> (estimado)</span>}{p.closedDays.length ? <span className="muted"> · fecha {p.closedDays.map((d) => WD[d]).join(", ")}</span> : null}</td>
                     <td className="num">{p.dur} min</td>
                     <td>{priceTxt(p.preco, dest.moeda)}</td>
                     <td><span className={"badge " + (SRC_BADGE[p.source] ?? "b-grey")}>{p.source}</span></td>
                     <td>{isStale(p) ? <span className="badge b-coral">Há {age} dias</span> : <span className="muted">{age === 0 ? "Hoje" : "Há " + age + " dias"}</span>}</td>
                     <td style={{ whiteSpace: "nowrap" }}>
-                      {isStale(p) && p.active && <button className="btn btn-ghost btn-sm" onClick={() => quick(p, { review: true }, p.nome + " revisado e de volta às sugestões")}><Icon name="check" />Revisado</button>}{" "}
+                      {(isStale(p) || p.revisado === false) && p.active && <button className="btn btn-ghost btn-sm" onClick={() => quick(p, { review: true }, p.nome + " revisado e de volta às sugestões")}><Icon name="check" />Revisado</button>}{" "}
                       <button className="btn btn-ghost btn-sm" onClick={() => { setErr(null); setForm(toForm(p)); }} title="Editar" aria-label="Editar"><Icon name="edit" /></button>{" "}
                       <button className="btn btn-ghost btn-sm" onClick={() => quick(p, { active: !p.active }, p.active ? "Lugar desativado" : "Lugar ativado")} title={p.active ? "Desativar" : "Ativar"}>{p.active ? "Desativar" : "Ativar"}</button>
                       {!p.active && p.source !== "Curadoria" && <>{" "}<button className="btn btn-ghost btn-sm" onClick={() => discard(p)} title="Descartar" aria-label="Descartar"><Icon name="trash" /></button></>}

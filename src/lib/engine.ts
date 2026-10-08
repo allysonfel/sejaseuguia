@@ -175,7 +175,7 @@ export type Ratings = Record<string, number>; // média de nota por categoria
 
 function score(p: Poi, ctx: Ctx, ratings: Ratings): number {
   const { profile: prof, rules: r, hotel } = ctx;
-  const catTag: Record<string, string> = { Museu: "museus", Compras: "compras", Parque: "natureza", "Vida noturna": "vida noturna", Gastronomia: "gastronomia", Restaurante: "gastronomia" };
+  const catTag: Record<string, string> = { Museu: "museus", Compras: "compras", Praia: "praias", Parque: "natureza", "Vida noturna": "vida noturna", Gastronomia: "gastronomia", Restaurante: "gastronomia" };
   const match = p.tags.filter((t) => prof.int.includes(t)).length + (prof.int.includes(catTag[p.cat] ?? "") ? 1 : 0);
   let s = 1 + match * (r.interesse / 100) * 3;
   const d = streetKm(hotel, p);
@@ -243,6 +243,9 @@ export type GenerateInput = {
 
 export type GenerateResult = { days: DayPlan[]; activities: number; optimizedMove: number; naiveMove: number; candidates: number };
 
+/** Categorias que não se repetem no mesmo dia (praia ocupa meio período: três seguidas viram um dia só de praia). */
+const MAX_POR_DIA: Record<string, number> = { Praia: 1 };
+
 export function generate({ ctx, nDays, forced, lastDayEnd, ratings = {} }: GenerateInput): GenerateResult {
   const { profile: prof, rules: r } = ctx;
   const perDay = r.porRitmo[prof.ritmo] ?? 5;
@@ -267,10 +270,13 @@ export function generate({ ctx, nDays, forced, lastDayEnd, ratings = {} }: Gener
     while (cluster.length + chosen.length < target && pool.length) {
       const c = centroid([ctx.hotel, ...cluster, ...chosen].slice(cluster.length + chosen.length ? 1 : 0));
       let bi = 0, bv = -Infinity;
+      const doDia = [...cluster, ...chosen];
       pool.forEach((p, i) => {
+        if ((MAX_POR_DIA[p.cat] ?? Infinity) <= doDia.filter((x) => x.cat === p.cat).length) return;
         const v = sc.get(p.id)! - streetKm(c, p) * (r.desloc / 100) * 0.9;
         if (v > bv) { bv = v; bi = i; }
       });
+      if (bv === -Infinity) break; // o que sobrou estourava o limite da categoria no dia
       chosen.push(pool.splice(bi, 1)[0]);
     }
     let meal: Poi | null = null;

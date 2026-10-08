@@ -93,6 +93,7 @@ export default function DayTimeline({ d, next, ctx, moeda, canEdit, open, setOpe
                         {it.warn === "fechado" && <span className="badge b-coral">Fechado neste dia</span>}
                         {it.late && <span className="badge b-coral">Chegada depois do horário reservado</span>}
                         {p.meal && <span className="badge b-grey">Refeição</span>}
+                        {p.revisado === false && <span className="badge b-violet" title="Sugerido automaticamente a partir de dados abertos. A agência ainda não revisou este lugar.">Sugestão automática</span>}
                         {p.tags.filter((t) => ctx.profile.int.includes(t)).slice(0, 2).map((t) => <span key={t} className="badge b-navy">{t}</span>)}
                       </div>
                     </button>
@@ -101,7 +102,10 @@ export default function DayTimeline({ d, next, ctx, moeda, canEdit, open, setOpe
                         <div className="why">
                           {whyLines(d, i, ctx, moeda).map((w, k) => <div key={k}><Icon name="check" /><span>{w}</span></div>)}
                         </div>
-                        {p.tip && <div className="why ai" style={{ marginTop: 6 }}><div><Icon name="spark" /><span><b>Dica da curadoria:</b> {p.tip}</span></div></div>}
+                        {p.horarioEstimado && (
+                          <div className="why" style={{ marginTop: 6 }}><div><Icon name="alert" /><span><b>Horário estimado</b> ({p.abre} às {p.fecha}): confirme antes de ir.</span></div></div>
+                        )}
+                        {p.tip && <div className="why ai" style={{ marginTop: 6 }}><div><Icon name="spark" /><span><b>{p.revisado === false ? "Dica:" : "Dica da curadoria:"}</b> {p.tip}</span></div></div>}
                       </>
                     )}
                   </div>

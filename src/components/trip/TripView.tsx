@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import Icon from "@/components/Icon";
 import TabBar from "@/components/TabBar";
 import {
@@ -35,6 +35,14 @@ type Props = {
   shareUrl: string;
 };
 
+const ouvirStorage = (cb: () => void) => {
+  window.addEventListener("storage", cb);
+  return () => window.removeEventListener("storage", cb);
+};
+const lerStorage = (k: string) => {
+  try { return localStorage.getItem(k); } catch { return null; }
+};
+
 export default function TripView(props: Props) {
   const { trip, pois, profile, rules } = props;
   const canEdit = trip.access !== "viewer";
@@ -51,6 +59,17 @@ export default function TripView(props: Props) {
   const [members, setMembers] = useState(props.members);
   const [sheet, setSheet] = useState<null | "addres" | "share">(null);
   const [chat, setChat] = useState(false);
+  // Aviso único quando o roteiro usa lugares importados automaticamente (não revisados pela agência).
+  const autos = useMemo(() => ed.days.reduce((n, x) => n + x.items.filter((it) => pois[it.p]?.revisado === false).length, 0), [ed.days, pois]);
+  const chaveAviso = "ssg-aviso-auto-" + trip.id;
+  // no servidor conta como fechado (sem piscar o aviso para quem já fechou)
+  const salvo = useSyncExternalStore(ouvirStorage, () => lerStorage(chaveAviso), () => "1");
+  const [fechadoAgora, setFechadoAgora] = useState(false);
+  const avisoFechado = fechadoAgora || salvo === "1";
+  const fecharAviso = () => {
+    setFechadoAgora(true);
+    try { localStorage.setItem(chaveAviso, "1"); } catch {}
+  };
 
   const d = sdays[day];
 
@@ -144,6 +163,17 @@ export default function TripView(props: Props) {
                 <button onClick={() => { setBanner(null); ed.clearUndo(); }}>Ok</button>
               </div>
             </div>
+          </div>
+        )}
+
+        {autos > 0 && !avisoFechado && (tab === "roteiro" || tab === "mapa") && (
+          <div className="aviso-auto" role="note">
+            <Icon name="info" />
+            <div style={{ flex: 1 }}>
+              <b>Roteiro com sugestões automáticas</b>
+              {autos} {autos === 1 ? "lugar foi sugerido" : "lugares foram sugeridos"} a partir de dados abertos e a agência ainda não revisou. Os horários podem ser estimados: confirme antes de ir.
+            </div>
+            <button onClick={fecharAviso} aria-label="Fechar aviso"><Icon name="close" /></button>
           </div>
         )}
 

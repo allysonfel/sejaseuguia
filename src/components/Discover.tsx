@@ -234,6 +234,7 @@ export default function Discover({ found: initialFound, trip, pois, profile, rul
                     <span className="badge b-sea"><Icon name="check" />Salvo em Minhas descobertas</span>
                   )}
                   {iaSobreCur && <span className="badge b-sea"><Icon name="camera" />Reconhecido pela foto</span>}
+                  {cur.revisado === false && <span className="badge b-violet" title="Sugerido automaticamente a partir de dados abertos. A agência ainda não revisou este lugar.">Sugestão automática</span>}
                 </div>
                 <h2>{cur.nome}</h2>
                 <div className="muted" style={{ fontSize: 13, margin: "2px 0 12px" }}>{cur.cat} · {cur.bairro}</div>

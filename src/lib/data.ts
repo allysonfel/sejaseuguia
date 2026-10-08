@@ -13,7 +13,7 @@ type PoiRow = {
   id: number; destination_id: number; nome: string; cat: string; bairro: string; lat: number; lng: number;
   dur: number; abre: string; fecha: string; preco: number; reserva: boolean; indoor: boolean; meal: boolean;
   tags: string[]; closed_days: number[]; tip: string | null; historia: string | null;
-  curiosidades: string[]; datas: { ano: string; txt: string }[]; source: string; reviewed_at: Date; active: boolean;
+  curiosidades: string[]; datas: { ano: string; txt: string }[]; source: string; reviewed_at: Date; active: boolean; revisado: boolean; horario_estimado: boolean;
 };
 
 export function mapPoi(r: PoiRow): Poi {
@@ -22,6 +22,7 @@ export function mapPoi(r: PoiRow): Poi {
     dur: r.dur, abre: r.abre, fecha: r.fecha, preco: r.preco, reserva: r.reserva, indoor: r.indoor, meal: r.meal,
     tags: r.tags, closedDays: r.closed_days, tip: r.tip, historia: r.historia, curiosidades: r.curiosidades,
     datas: r.datas, source: r.source, reviewedAt: r.reviewed_at.toISOString(), active: r.active,
+    revisado: r.revisado, horarioEstimado: r.horario_estimado,
   };
 }
 
@@ -43,17 +44,17 @@ export async function poisForTrip(trip: Trip): Promise<Record<number, Poi>> {
   return out;
 }
 
-type DestRow = { id: number; nome: string; pais: string; lat: number; lng: number; moeda: string; update_freq: string; cor1: string; cor2: string; foto_url: string | null; foto_credito: string | null };
-const mapDest = (r: DestRow): Destination => ({
+export type DestRow = { id: number; nome: string; pais: string; lat: number; lng: number; moeda: string; update_freq: string; cor1: string; cor2: string; foto_url: string | null; foto_credito: string | null; uf: string | null; import_status?: string | null };
+export const mapDest = (r: DestRow): Destination => ({
   id: r.id, nome: r.nome, pais: r.pais, lat: r.lat, lng: r.lng, moeda: r.moeda, updateFreq: r.update_freq, cor1: r.cor1, cor2: r.cor2,
-  fotoUrl: r.foto_url, fotoCredito: r.foto_credito,
+  fotoUrl: r.foto_url, fotoCredito: r.foto_credito, uf: r.uf,
 });
 
 /** published: só os que já têm lugar liberado (os recém-importados esperam a revisão da equipe). */
 export async function listDestinations(opts: { published?: boolean } = {}): Promise<Destination[]> {
   await ensureSchema();
   const rows = opts.published
-    ? await sql<DestRow[]>`SELECT * FROM destinations d WHERE EXISTS (SELECT 1 FROM pois p WHERE p.destination_id = d.id AND p.active) ORDER BY nome`
+    ? await sql<DestRow[]>`SELECT * FROM destinations d WHERE EXISTS (SELECT 1 FROM pois p WHERE p.destination_id = d.id AND p.active) ORDER BY ranking NULLS LAST, nome`
     : await sql<DestRow[]>`SELECT * FROM destinations ORDER BY nome`;
   return rows.map(mapDest);
 }
