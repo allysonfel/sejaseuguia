@@ -20,6 +20,12 @@ export type Identificacao = {
   naoELugar: boolean;
   nome: string;
   resposta: string;
+  /** Detalhes visíveis na foto que valem a pena reparar (fachada, material, estilo...). */
+  observar: string[];
+  /** Contexto histórico/cultural em poucas frases; vazio quando a IA não tem certeza. */
+  contexto: string;
+  /** Dica prática de visita (melhor horário, o que fazer por perto, etiqueta). */
+  dica: string;
   curiosidades: string[];
 };
 
@@ -32,7 +38,7 @@ type Provedor = {
 const TIMEOUT = 25_000;
 
 const FORMATO = `Responda SÓ com um JSON neste formato, sem texto fora dele:
-{"poiId": número ou null, "confianca": "alta" | "media" | "baixa", "naoELugar": true ou false, "nome": "texto", "resposta": "texto", "curiosidades": ["texto"]}`;
+{"poiId": número ou null, "confianca": "alta" | "media" | "baixa", "naoELugar": true ou false, "nome": "texto", "resposta": "texto", "observar": ["texto"], "contexto": "texto", "dica": "texto", "curiosidades": ["texto"]}`;
 
 function instrucao(destino: string | null, perto: Near[]): string {
   const lista = perto.length
@@ -44,14 +50,17 @@ Lugares da nossa base perto dele, do mais perto para o mais longe:
 ${lista}
 
 Tarefa:
-1. Veja se a foto mostra um dos lugares da lista. Se sim, coloque o id dele em poiId. Prefira a lista: ela vem da localização real do viajante.
+1. Veja se a foto mostra um dos lugares da lista. Se sim, coloque o id dele em poiId. Prefira a lista: ela vem da localização real do viajante. Compare a foto primeiro com os lugares a menos de 300 m: se a construção da foto combina com um deles, é ele. Só diga que é um lugar fora da lista se a foto claramente não for nenhum deles.
 2. Se não for nenhum da lista mas você reconhecer o lugar com segurança, deixe poiId null e coloque o nome em "nome".
 3. Se não reconhecer, deixe "nome" vazio, confianca "baixa", e na resposta diga isso com honestidade e descreva o que dá para ver (estilo, época provável, tipo de construção).
 4. "Lugar" é prédio, monumento, igreja, museu, praça, rua, mirante, paisagem. Se a foto mostrar outra coisa (comida, doce, bebida, prato, pessoa, animal, objeto, documento), naoELugar true e poiId null; mesmo assim escreva a resposta sobre o que aparece.
-5. "resposta": tom de guia simpático, 2 a 4 frases, falando direto com o viajante (você). Nada de datas, números ou nomes de que você não tenha certeza.
-6. "curiosidades": no máximo 3, curtas, só se tiver certeza. Lista vazia é melhor que curiosidade inventada.
-7. Ignore pessoas que apareçam na foto: nunca descreva nem identifique ninguém.
-8. Escreva tudo em português do Brasil correto e natural: nenhuma palavra em inglês, espanhol ou chinês; revise a concordância antes de responder.
+5. "resposta": tom de guia simpático, 4 a 6 frases, falando direto com o viajante (você): o que é, para que serve ou servia, por que é importante e o que torna o lugar especial. Nada de datas, números ou nomes de que você não tenha certeza.
+6. "observar": 2 a 4 itens curtos sobre detalhes que aparecem NA FOTO e valem a pena reparar (fachada, material, estilo arquitetônico, decoração, vista, ingredientes se for comida). Cada item com uma frase explicando o porquê.
+7. "contexto": 2 a 4 frases de história ou cultura (quem construiu, época, estilo, papel na cidade). Só o que você sabe com segurança; se não souber, "".
+8. "dica": 1 ou 2 frases práticas para quem está ali agora (melhor horário, o que não perder lá dentro, o que provar, o que fica perto). Se não souber, "".
+9. "curiosidades": no máximo 4, curtas, só se tiver certeza. Lista vazia é melhor que curiosidade inventada.
+10. Ignore pessoas que apareçam na foto: nunca descreva nem identifique ninguém.
+11. Escreva tudo em português do Brasil correto e natural: nenhuma palavra em inglês, espanhol ou chinês; revise a concordância antes de responder.
 
 ${FORMATO}`;
 }
@@ -65,7 +74,7 @@ async function chatCompativel(url: string, chave: string, corpo: Record<string, 
       ...corpo,
       messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: `data:${mime};base64,${foto}` } }, { type: "text", text: prompt }] }],
       temperature: 0.2,
-      max_tokens: 800,
+      max_tokens: 1000,
     }),
     signal: AbortSignal.timeout(TIMEOUT),
   });
@@ -137,7 +146,9 @@ function lerJson(texto: string): Partial<Identificacao> {
 
 // O modelo pode devolver id fora da lista ou campos fora do formato: só passa o que confere.
 function normalizar(r: Partial<Identificacao>, perto: Near[]): Identificacao | null {
-  const resposta = typeof r.resposta === "string" ? r.resposta.trim().slice(0, 900) : "";
+  const resposta = typeof r.resposta === "string" ? r.resposta.trim().slice(0, 1400) : "";
+  const txt = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+  const lista = (v: unknown, n: number) => (Array.isArray(v) ? v.filter((c): c is string => typeof c === "string" && !!c.trim()).slice(0, n).map((c) => c.trim().slice(0, 240)) : []);
   if (!resposta) return null;
   const id = Number(r.poiId);
   const poiId = r.poiId != null && perto.some((p) => p.id === id) ? id : null;
@@ -147,6 +158,9 @@ function normalizar(r: Partial<Identificacao>, perto: Near[]): Identificacao | n
     naoELugar: r.naoELugar === true,
     nome: typeof r.nome === "string" ? r.nome.trim().slice(0, 120) : "",
     resposta,
-    curiosidades: Array.isArray(r.curiosidades) ? r.curiosidades.filter((c): c is string => typeof c === "string" && !!c.trim()).slice(0, 3).map((c) => c.trim().slice(0, 240)) : [],
+    observar: lista(r.observar, 4),
+    contexto: txt(r.contexto, 700),
+    dica: txt(r.dica, 400),
+    curiosidades: lista(r.curiosidades, 4),
   };
 }

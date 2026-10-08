@@ -13,7 +13,36 @@ import type { TripAccess } from "@/lib/data";
 import type { Poi, Profile, Rules, Trip } from "@/lib/types";
 
 type Near = Poi & { dist: number };
-type Ia = { poiId: number | null; confianca: "alta" | "media" | "baixa"; naoELugar: boolean; nome: string; resposta: string; curiosidades: string[] };
+type Ia = {
+  poiId: number | null; confianca: "alta" | "media" | "baixa"; naoELugar: boolean; nome: string; resposta: string;
+  observar?: string[]; contexto?: string; dica?: string; curiosidades: string[];
+};
+
+// Detalhes que a IA escreveu sobre a foto. "curiosidades" fica de fora quando
+// o lugar já tem as curiosidades da curadoria.
+function IaDetalhes({ ia, curiosidades = true, children }: { ia: Ia; curiosidades?: boolean; children?: React.ReactNode }) {
+  return (
+    <>
+      <div className="box">
+        <div className="box-t">O que vemos na sua foto</div>
+        <p style={{ fontSize: 14, lineHeight: 1.6 }}>{ia.resposta}</p>
+        {children}
+      </div>
+      {!!ia.observar?.length && (
+        <div className="box"><div className="box-t">Repare nos detalhes</div>{ia.observar.map((c, i) => <div key={i} className="fact"><Icon name="camera" /><span>{c}</span></div>)}</div>
+      )}
+      {ia.contexto && (
+        <div className="box"><div className="box-t">Um pouco de contexto</div><p style={{ fontSize: 14, lineHeight: 1.6 }}>{ia.contexto}</p></div>
+      )}
+      {ia.dica && (
+        <div className="box"><div className="box-t">Dica do guia</div><div className="fact"><Icon name="spark" /><span>{ia.dica}</span></div></div>
+      )}
+      {curiosidades && ia.curiosidades.length > 0 && (
+        <div className="box"><div className="box-t">Curiosidades</div>{ia.curiosidades.map((c, i) => <div key={i} className="fact"><Icon name="star" /><span>{c}</span></div>)}</div>
+      )}
+    </>
+  );
+}
 // ia: resposta da IA sobre a foto; iaView: mostrando o cartão da IA (lugar fora da nossa base).
 type Photo = { url: string | null; step: number; err: string | null; near: Near[]; pick: number; notIt: boolean; ia: Ia | null; iaView: boolean } | null;
 
@@ -219,15 +248,11 @@ export default function Discover({ found: initialFound, trip, pois, profile, rul
                     ))}
                   </div>
                 )}
-                {iaSobreCur && (
-                  <div className="box"><div className="box-t">O que vemos na sua foto</div><p style={{ fontSize: 14, lineHeight: 1.6 }}>{iaSobreCur.resposta}</p></div>
-                )}
+                {iaSobreCur && <IaDetalhes ia={iaSobreCur} curiosidades={!cur.curiosidades.length} />}
                 {ph.ia?.naoELugar && !iaSobreCur && (
-                  <div className="box" style={{ fontSize: 13 }}>
-                    <div className="box-t">O que vemos na sua foto</div>
-                    <p style={{ fontSize: 14, lineHeight: 1.6 }}>{ph.ia.resposta}</p>
-                    <p className="muted" style={{ marginTop: 6 }}>Não parece um lugar, então mostramos o que está mais perto de você.</p>
-                  </div>
+                  <IaDetalhes ia={ph.ia}>
+                    <p className="muted" style={{ marginTop: 6, fontSize: 13 }}>Não parece um lugar, então mostramos o que está mais perto de você.</p>
+                  </IaDetalhes>
                 )}
                 {cur.historia ? (
                   <div className="box"><div className="box-t">A história em 30 segundos</div><p style={{ fontSize: 14, lineHeight: 1.6 }}>{cur.historia}</p></div>
@@ -271,10 +296,7 @@ export default function Discover({ found: initialFound, trip, pois, profile, rul
                   <span className="badge b-sea"><Icon name="camera" />Reconhecido pela foto</span>
                 </div>
                 <h2>{iaCard.nome || "Não reconhecemos com certeza"}</h2>
-                <div className="box"><div className="box-t">O que vemos na sua foto</div><p style={{ fontSize: 14, lineHeight: 1.6 }}>{iaCard.resposta}</p></div>
-                {iaCard.curiosidades.length > 0 && (
-                  <div className="box"><div className="box-t">Curiosidades</div>{iaCard.curiosidades.map((c, i) => <div key={i} className="fact"><Icon name="star" /><span>{c}</span></div>)}</div>
-                )}
+                <IaDetalhes ia={iaCard} />
                 <p className="muted" style={{ fontSize: 12, margin: "4px 0 12px" }}>Texto gerado por IA a partir da foto: pode ter erros. Este lugar ainda não está na nossa base com horários e preços.</p>
                 {ph.near.length > 0 && (
                   <button className="btn btn-ghost btn-block" onClick={() => setPh({ ...ph, iaView: false, pick: 0 })}><Icon name="pin" />Ver lugares cadastrados por perto</button>
