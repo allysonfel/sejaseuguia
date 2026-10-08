@@ -132,6 +132,83 @@ a.li{color:inherit}
   .qz-opt.on .oi{transform:none}
 }
 
+/* ---- quiz gamificado (estilo Duolingo): mascote, faixa de feedback, botões 3D ---- */
+.qz{position:relative}
+.qz-top{display:flex;align-items:center;gap:10px;padding-bottom:4px}
+.qz-top .icon-btn{flex:none}
+.qz-prog{flex:1;height:14px;margin:0;border-radius:99px;background:#E3E7F0}
+.qz-prog i{border-radius:99px;background:var(--sun);position:relative;box-shadow:inset 0 -3px 0 rgba(0,0,0,.08)}
+.qz-prog i::before{content:"";position:absolute;left:8px;right:8px;top:3px;height:3px;border-radius:99px;background:rgba(255,255,255,.55)}
+.qz-som{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:var(--muted);flex:none;position:relative}
+.qz-som svg{width:18px;height:18px}
+.qz-som.off{opacity:.5}
+.qz-num{display:block;font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--sun);margin:6px 0 4px}
+.qz-jogo .qz-body h2{font-size:24px;line-height:1.2}
+/* mascote falando (balão) */
+.qz-fala{display:flex;align-items:flex-end;gap:10px;margin:12px 0 18px}
+.qz-balao{position:relative;flex:1;background:#fff;border:2px solid var(--line);border-radius:16px;padding:10px 14px;font-size:14px;font-weight:600;color:var(--ink);animation:qzBalao .35s cubic-bezier(.3,1.5,.5,1)}
+.qz-balao::before{content:"";position:absolute;left:-9px;bottom:14px;width:14px;height:14px;background:#fff;border-left:2px solid var(--line);border-bottom:2px solid var(--line);transform:rotate(45deg)}
+@keyframes qzBalao{from{opacity:0;transform:scale(.85) translateX(-8px)}}
+.gui{display:inline-block;flex:none}
+.gui svg{width:100%;height:100%;overflow:visible}
+.gui-corpo{transform-origin:50% 90%;transform-box:fill-box}
+.gui-idle .gui-corpo{animation:guiBalanca 2.6s ease-in-out infinite}
+.gui-idle .gui-olhos{transform-origin:center;transform-box:fill-box;animation:guiPisca 4s infinite}
+.gui-feliz .gui-corpo{animation:guiPula .6s cubic-bezier(.3,1.6,.5,1)}
+.gui-feliz .gui-sombra,.gui-festa .gui-sombra{transform-origin:center;transform-box:fill-box}
+.gui-feliz .gui-sombra{animation:guiSombra .6s ease}
+.gui-festa .gui-corpo{animation:guiFesta 1s cubic-bezier(.3,1.5,.5,1) infinite}
+.gui-festa .gui-sombra{animation:guiSombra 1s ease infinite}
+@keyframes guiBalanca{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg) translateY(-1px)}}
+@keyframes guiPisca{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes guiPula{0%{transform:translateY(0) scale(1)}30%{transform:translateY(-14px) scale(1.05,.95)}60%{transform:translateY(0) scale(1.08,.9)}100%{transform:none}}
+@keyframes guiFesta{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-16px) rotate(-8deg)}50%{transform:translateY(0) rotate(0) scale(1.06,.94)}75%{transform:translateY(-10px) rotate(8deg)}}
+@keyframes guiSombra{30%,25%{transform:scale(.7);opacity:.6}}
+/* opções "3D" que afundam no toque */
+.qz-jogo .qz-opt,.qz-jogo .qz-grid .qz-opt{border:2px solid var(--line);box-shadow:0 4px 0 var(--line);margin-bottom:12px}
+.qz-jogo .qz-grid .qz-opt{margin-bottom:0}
+.qz-jogo .qz-opt:active{transform:translateY(4px);box-shadow:0 0 0 var(--line)}
+.qz-jogo .qz-opt.on{border-color:var(--sun);background:#FFF7E3;box-shadow:0 4px 0 #E8A10F}
+.qz-jogo .qz-opt.on:active{box-shadow:0 0 0 #E8A10F}
+.qz-jogo .qz-opt.on b{color:#7A4F00}
+.qz-3d{box-shadow:0 4px 0 #D98E00;transition:transform .08s,box-shadow .08s}
+.qz-3d:active:not(:disabled){transform:translateY(4px);box-shadow:0 0 0 #D98E00}
+.qz-3d:disabled{box-shadow:0 4px 0 #CFD5E3}
+/* faixa de feedback que sobe de baixo */
+.qz-fb{position:absolute;left:0;right:0;bottom:0;z-index:20;background:#DDF5F1;border-top:2px solid #B4E8DF;padding:16px 18px 18px;animation:qzFb .32s cubic-bezier(.2,.9,.3,1.1)}
+@keyframes qzFb{from{transform:translateY(100%)}}
+.qz-fb-l{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.qz-fb-ic{width:44px;height:44px;border-radius:50%;background:#fff;color:#0B7A6D;display:grid;place-items:center;flex:none;animation:qzBadge .5s cubic-bezier(.3,1.6,.5,1)}
+.qz-fb-ic svg{width:24px;height:24px;stroke-width:3}
+.qz-fb b{display:block;font-size:20px;font-weight:800;color:#0B7A6D}
+.qz-fb-btn{background:#0E9F8E;color:#fff;box-shadow:0 4px 0 #0A7568}
+.qz-fb-btn:active{box-shadow:0 0 0 #0A7568}
+/* abertura com o mascote */
+.qz-intro-gui{margin-bottom:14px}
+.qz-intro .gui-contorno{stroke:#fff}
+.qz-intro .gui-sombra{fill:rgba(255,255,255,.12)}
+.qz-intro .qz-3d:disabled{box-shadow:0 4px 0 rgba(255,255,255,.1)}
+/* tela "Quiz completo!" */
+.qz-fim{justify-content:space-between;padding:22px 18px 24px;overflow:hidden;background:linear-gradient(180deg,#FFF7E3,var(--bg) 55%)}
+.qz-fim-m{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;position:relative;z-index:1}
+.qz-fim-m h2{font-size:32px;color:#D98E00;margin-top:10px;animation:qzPop .5s cubic-bezier(.3,1.5,.5,1) .15s both}
+.qz-fim-m p{color:var(--muted);font-weight:600;margin-bottom:18px;animation:qzRise .4s ease .3s both}
+.qz-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;width:100%;max-width:300px}
+.qz-stat{border-radius:16px;border:2px solid;overflow:hidden;background:#fff;animation:qzRise .45s cubic-bezier(.3,1.4,.5,1) both;animation-delay:calc(var(--i) * 120ms + .45s)}
+.qz-stat small{display:block;color:#fff;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:5px 4px}
+.qz-stat b{display:flex;align-items:center;justify-content:center;gap:4px;font-size:22px;font-weight:800;padding:12px 4px}
+.qz-stat b svg{width:20px;height:20px}
+.s-perg{border-color:var(--sun)}.s-perg small{background:var(--sun);color:var(--navy)}.s-perg b{color:#D98E00}
+.s-tempo{border-color:#0E9F8E}.s-tempo small{background:#0E9F8E}.s-tempo b{color:#0B7A6D}
+.qz-chuva{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.qz-chuva i{position:absolute;top:-16px;width:8px;height:13px;border-radius:2px;opacity:0;animation:qzChuva 2s linear forwards}
+@keyframes qzChuva{0%{opacity:1;transform:translateY(0) rotate(0)}85%{opacity:1}100%{opacity:0;transform:translateY(105vh) rotate(var(--r))}}
+.qz-fim .qz-3d{position:relative;z-index:1}
+@media (prefers-reduced-motion:reduce){
+  .gui-corpo,.gui-olhos,.gui-sombra,.qz-balao,.qz-fb,.qz-fb-ic,.qz-fim-m h2,.qz-fim-m p,.qz-stat{animation:none!important}
+  .qz-chuva{display:none}
+}
+
 /* celular e tablet: o app ocupa a tela inteira (a coluna de 420px com fundo escuro fica só no computador) */
 @media (max-width:760px){
   .stage{background:var(--bg)}
