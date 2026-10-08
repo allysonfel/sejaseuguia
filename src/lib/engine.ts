@@ -2,7 +2,7 @@
 // do perfil e replaneja (chuva, cansaço, atraso, economia...). Código puro,
 // sem banco: roda no servidor (gerar a viagem) e no cliente (ajustes na hora).
 
-import { addDays, dayLabel, toMin, weekday } from "./format";
+import { addDays, dayLabel, faixaTxt, toMin, weekday } from "./format";
 import type { DayPlan, Hotel, Item, Place, Poi, Profile, Rules } from "./types";
 
 export type Ctx = {
@@ -600,6 +600,6 @@ export function whyLines(s: SDay, i: number, ctx: Ctx, moeda: string): string[] 
   ];
   if (it.fixed) why.push("Horário travado pela sua reserva das " + it.fixed);
   if (p.reserva && !it.fixed) why.push("Costuma ter fila. Recomendamos comprar antes");
-  if (p.preco > 0) why.push("Faixa de preço " + moeda.repeat(p.preco));
+  if (p.preco > 0) why.push("Faixa de preço " + faixaTxt(p.preco, moeda));
   return why;
 }

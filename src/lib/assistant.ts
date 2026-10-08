@@ -5,6 +5,7 @@ import {
   addPoi, eligible, haversineKm, lateAdj, nearestUnused, rainSwap, saveAdj, sched, tiredAdj, travel,
   type Ctx,
 } from "./engine";
+import { priceTxt } from "./format";
 import type { DayPlan, Place, Poi, ReplanKind } from "./types";
 
 export type Reply = {
@@ -77,7 +78,7 @@ export function reply(qRaw: string, days: DayPlan[], idx: number, ctx: Ctx, moed
     else preview = addPoi(days, idx, best.id, ctx).days;
     return {
       t: (byTag.length ? "Achei" : words.length ? "Não achei exatamente esse tipo, mas separei" : "Separei") + " opções perto de onde vocês vão estar no " + dn + ":",
-      cards: list.map((p) => [p.nome, p.bairro + " · " + (p.preco ? moeda.repeat(p.preco) : "grátis") + " · " + legTxt(center, p, ctx) + " do centro do dia"]),
+      cards: list.map((p) => [p.nome, p.bairro + " · " + priceTxt(p.preco, moeda) + " · " + legTxt(center, p, ctx) + " do centro do dia"]),
       apply: mi >= 0 ? "Trocar a refeição por " + best.nome : "Colocar " + best.nome + " no dia",
       preview, kind: "add",
     };
@@ -109,7 +110,7 @@ export function reply(qRaw: string, days: DayPlan[], idx: number, ctx: Ctx, moed
     return {
       t: (alt ? "Tirei " + old.nome + " e coloquei uma opção no mesmo caminho, para não aumentar o deslocamento:" : "Tirei " + old.nome + ". Não achei substituto por perto, então o dia ficou mais leve.") +
         (tight ? " Atenção: depois da troca algum horário fica apertado." : ""),
-      cards: alt ? [[alt.nome, alt.dur + " min · " + (alt.preco ? moeda.repeat(alt.preco) : "grátis") + " · " + legTxt(old, alt, ctx) + " da parada anterior"]] : undefined,
+      cards: alt ? [[alt.nome, alt.dur + " min · " + priceTxt(alt.preco, moeda) + " · " + legTxt(old, alt, ctx) + " da parada anterior"]] : undefined,
       apply: "Confirmar", preview: next, kind: "remove",
     };
   }

@@ -21,8 +21,17 @@ export const n0 = (v: number) => Math.round(v).toString().replace(/\B(?=(\d{3})+
 
 export const km1 = (v: number) => v.toFixed(1).replace(".", ",");
 
+// Faixa de preço como no Google Maps: o símbolo repetido ($ barato, $$ médio, $$$ caro).
+// Moeda de um caractere (€, £, ¥, ฿) repete a própria; as outras (R$, US$, kr, SAR) usam "$",
+// senão viraria "R$R$".
+const FAIXA = ["", "econômico", "moderado", "caro"];
 export function priceTxt(preco: number, moeda: string) {
-  return preco <= 0 ? "grátis" : moeda.repeat(preco);
+  if (preco <= 0) return "grátis";
+  return ([...moeda].length === 1 ? moeda : "$").repeat(preco);
+}
+/** "$$ (moderado)": para frases onde o símbolo sozinho fica vago. */
+export function faixaTxt(preco: number, moeda: string) {
+  return preco <= 0 ? "grátis" : priceTxt(preco, moeda) + " (" + FAIXA[Math.min(3, preco)] + ")";
 }
 
 const WD = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
