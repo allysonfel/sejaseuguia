@@ -22,7 +22,7 @@ export default async function RoteiroPublico({ params }: { params: Promise<{ slu
     <div className="pub">
       <div className="pub-in">
         <div className="trip-hero" style={{ borderRadius: 0 }}>
-          <div className="art"><TripArt h={150} c1={trip.cor1} c2={trip.cor2} /></div>
+          <div className="art"><TripArt h={150} c1={trip.cor1} c2={trip.cor2} foto={trip.fotoUrl} /></div>
           <div className="inf">
             <h3>{trip.destino}</h3>
             <div className="meta"><span>{rangeTxt(trip.inicio, trip.fim)}</span><span>Ponto Zero: {trip.hotel.nome}</span><span>Roteiro de {owner?.nome.split(" ")[0] ?? "um viajante"}</span></div>

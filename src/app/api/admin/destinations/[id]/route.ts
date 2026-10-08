@@ -9,7 +9,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
   if (typeof d === "string") return fail(d);
   const r = await sql`
     UPDATE destinations SET nome = ${d.nome}, pais = ${d.pais}, lat = ${d.lat}, lng = ${d.lng}, moeda = ${d.moeda},
-      update_freq = ${d.updateFreq}, cor1 = ${d.cor1}, cor2 = ${d.cor2}
+      update_freq = ${d.updateFreq}, cor1 = ${d.cor1}, cor2 = ${d.cor2}, foto_url = ${d.fotoUrl}, foto_credito = ${d.fotoCredito}
     WHERE id = ${id} RETURNING id`;
   if (!r.length) return fail("Destino não encontrado.", 404);
   return ok();

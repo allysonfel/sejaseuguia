@@ -197,6 +197,11 @@ async function createSchema() {
       nome TEXT NOT NULL,
       PRIMARY KEY (destination_id, nome)
     );
+
+    -- Foto do destino (Wikimedia Commons ou URL da equipe) e crédito do autor.
+    ALTER TABLE destinations ADD COLUMN IF NOT EXISTS foto_url TEXT;
+    ALTER TABLE destinations ADD COLUMN IF NOT EXISTS foto_credito TEXT;
+    ALTER TABLE destinations ADD COLUMN IF NOT EXISTS foto_buscada_em TIMESTAMPTZ;
   `);
 
   await sql`
@@ -235,6 +240,9 @@ async function createSchema() {
         ON CONFLICT DO NOTHING`;
     }
   }
+
+  // Destinos sem foto ganham uma em segundo plano (não segura a subida do app).
+  import("./destFoto").then((m) => m.preencherFotosFaltantes()).catch((e) => console.error("[fotos]", (e as Error).message));
 }
 
 export async function getSetting<T>(key: string, fallback: T): Promise<T> {

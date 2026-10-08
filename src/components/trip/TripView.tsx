@@ -106,6 +106,11 @@ export default function TripView(props: Props) {
     <>
       <div className="a-body">
         <div className="trip-head">
+          {trip.fotoUrl && (
+            <div className="trip-head-foto" style={{ backgroundImage: `url("${trip.fotoUrl}")` }}>
+              {trip.fotoCredito && <small className="foto-cred">{trip.fotoCredito}</small>}
+            </div>
+          )}
           <div className="top">
             <Link className="icon-btn" href="/app" aria-label="Voltar"><Icon name="back" /></Link>
             <div style={{ flex: 1, minWidth: 0 }}>

@@ -58,6 +58,8 @@ export type Destination = {
   updateFreq: string;
   cor1: string;
   cor2: string;
+  fotoUrl: string | null;
+  fotoCredito: string | null;
 };
 
 export type Rules = {
@@ -138,6 +140,8 @@ export type Trip = {
   moeda: string;
   cor1: string;
   cor2: string;
+  fotoUrl: string | null;
+  fotoCredito: string | null;
   hotel: Hotel;
   inicio: string;
   fim: string;

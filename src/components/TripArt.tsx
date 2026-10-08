@@ -1,5 +1,7 @@
-// Ilustração de cidade (pôr do sol + silhueta) nas cores do destino.
-export default function TripArt({ h = 150, c1 = "#FFB21E", c2 = "#F7845E", id = "sky" }: { h?: number; c1?: string; c2?: string; id?: string }) {
+// Foto do destino quando houver; senão, ilustração de cidade (pôr do sol + silhueta) nas cores do destino.
+export default function TripArt({ h = 150, c1 = "#FFB21E", c2 = "#F7845E", id = "sky", foto }: { h?: number; c1?: string; c2?: string; id?: string; foto?: string | null }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  if (foto) return <img className="trip-foto" src={foto} alt="" loading="lazy" />;
   const y = (f: number) => h * f;
   const skyline = [
     [0, .72], [30, .6], [55, .64], [70, .5], [78, .5], [86, .36], [94, .5], [120, .52], [150, .46], [175, .55],

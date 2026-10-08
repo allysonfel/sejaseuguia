@@ -12,7 +12,7 @@ import type { Destination } from "@/lib/types";
 const LeafletMap = dynamic(() => import("@/components/LeafletMap"), { ssr: false, loading: () => <div className="lmap" /> });
 
 type D = Destination & { stats: { pois: number; stale: number; trips: number; reviewed: string | null } };
-type Form = { id: number | null; nome: string; pais: string; lat: number | null; lng: number | null; moeda: string; updateFreq: string; cor1: string; cor2: string };
+type Form = { id: number | null; nome: string; pais: string; lat: number | null; lng: number | null; moeda: string; updateFreq: string; cor1: string; cor2: string; fotoUrl: string; fotoCredito: string };
 type Hit = { nome: string; endereco: string; lat: number; lng: number };
 type Imp = { id: number; nome: string; raio: string; busy: boolean; res: { atracoes: number; restaurantes: number; repetidos: number; avisos: string[] } | null; err: string | null };
 
@@ -23,12 +23,13 @@ export default function DestAdmin({ dests, requests }: { dests: D[]; requests: {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [imp, setImp] = useState<Imp | null>(null);
+  const [buscandoFoto, setBuscandoFoto] = useState(false);
 
   const open = (d: D | null, nome = "") => {
     setErr(null);
     setHits(null);
-    setForm(d ? { id: d.id, nome: d.nome, pais: d.pais, lat: d.lat, lng: d.lng, moeda: d.moeda, updateFreq: d.updateFreq, cor1: d.cor1, cor2: d.cor2 }
-      : { id: null, nome, pais: "", lat: null, lng: null, moeda: "€", updateFreq: "Mensal", cor1: "#FFB21E", cor2: "#101B3B" });
+    setForm(d ? { id: d.id, nome: d.nome, pais: d.pais, lat: d.lat, lng: d.lng, moeda: d.moeda, updateFreq: d.updateFreq, cor1: d.cor1, cor2: d.cor2, fotoUrl: d.fotoUrl ?? "", fotoCredito: d.fotoCredito ?? "" }
+      : { id: null, nome, pais: "", lat: null, lng: null, moeda: "€", updateFreq: "Mensal", cor1: "#FFB21E", cor2: "#101B3B", fotoUrl: "", fotoCredito: "" });
   };
 
   async function search() {
@@ -61,6 +62,20 @@ export default function DestAdmin({ dests, requests }: { dests: D[]; requests: {
   }
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => f && { ...f, [k]: v });
 
+  // Sugestão de foto aberta (Wikimedia Commons) para a cidade marcada no mapa.
+  async function buscarFoto() {
+    if (!form || form.lat == null || form.lng == null) return setErr("Marque o centro do destino no mapa antes de buscar a foto.");
+    setBuscandoFoto(true);
+    setErr(null);
+    try {
+      const r = await api<{ foto: { url: string; credito: string } }>(`/api/admin/destinations/foto?nome=${encodeURIComponent(form.nome)}&lat=${form.lat}&lng=${form.lng}`);
+      setForm((f) => f && { ...f, fotoUrl: r.foto.url, fotoCredito: r.foto.credito });
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+    setBuscandoFoto(false);
+  }
+
   async function runImport() {
     if (!imp) return;
     setImp({ ...imp, busy: true, err: null, res: null });
@@ -82,11 +97,16 @@ export default function DestAdmin({ dests, requests }: { dests: D[]; requests: {
         {dests.map((d) => (
           <div key={d.id} className="dest">
             <div className="art">
-              <svg viewBox="0 0 300 84" preserveAspectRatio="none">
-                <rect width="300" height="84" fill={d.cor2} />
-                <circle cx="240" cy="30" r="40" fill={d.cor1} opacity=".85" />
-                <path d="M0 70 L40 52 L70 60 L110 40 L150 58 L200 46 L260 62 L300 50 V84 H0z" fill="rgba(0,0,0,.25)" />
-              </svg>
+              {d.fotoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className="dest-foto" src={d.fotoUrl} alt="" loading="lazy" />
+              ) : (
+                <svg viewBox="0 0 300 84" preserveAspectRatio="none">
+                  <rect width="300" height="84" fill={d.cor2} />
+                  <circle cx="240" cy="30" r="40" fill={d.cor1} opacity=".85" />
+                  <path d="M0 70 L40 52 L70 60 L110 40 L150 58 L200 46 L260 62 L300 50 V84 H0z" fill="rgba(0,0,0,.25)" />
+                </svg>
+              )}
               <b>{d.nome}</b>
             </div>
             <div className="bd">
@@ -200,6 +220,21 @@ export default function DestAdmin({ dests, requests }: { dests: D[]; requests: {
               <div className="two">
                 <div className="field"><label>Símbolo da moeda</label><input className="input" value={form.moeda} onChange={(e) => set("moeda", e.target.value)} /></div>
                 <div className="field"><label>Revisão dos lugares</label><select className="input full" value={form.updateFreq} onChange={(e) => set("updateFreq", e.target.value)}>{["Semanal", "Quinzenal", "Mensal"].map((f) => <option key={f}>{f}</option>)}</select></div>
+              </div>
+              <div className="field">
+                <label>Foto do destino</label>
+                {form.fotoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="dest-foto-prev" src={form.fotoUrl} alt={"Foto de " + form.nome} />
+                ) : (
+                  <div className="muted" style={{ fontSize: 12.5, marginBottom: 6 }}>{form.id ? "Sem foto: o app mostra a ilustração nas cores abaixo." : "Ao salvar, buscamos uma foto aberta da cidade (Wikimedia Commons). Ou busque agora para ver antes."}</div>
+                )}
+                <div className="row" style={{ gap: 8, margin: "6px 0" }}>
+                  <button className="btn btn-ghost btn-sm" onClick={buscarFoto} disabled={buscandoFoto}><Icon name="search" />{buscandoFoto ? "Buscando..." : "Buscar foto automática"}</button>
+                  {form.fotoUrl && <button className="btn btn-ghost btn-sm" onClick={() => setForm((f) => f && { ...f, fotoUrl: "", fotoCredito: "" })}>Remover</button>}
+                </div>
+                <input className="input" placeholder="Ou cole o endereço (https) de uma imagem" value={form.fotoUrl} onChange={(e) => setForm((f) => f && { ...f, fotoUrl: e.target.value.trim(), fotoCredito: "" })} />
+                {form.fotoCredito && <small className="muted" style={{ display: "block", marginTop: 4 }}>{form.fotoCredito}</small>}
               </div>
               <div className="two">
                 <div className="field"><label>Cor principal</label><input className="input" type="color" value={form.cor1} onChange={(e) => set("cor1", e.target.value)} /></div>

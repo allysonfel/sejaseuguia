@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Icon from "@/components/Icon";
+import TripArt from "@/components/TripArt";
 import { api } from "@/lib/client";
 import { eligible, travel } from "@/lib/engine";
 import { addDays, daysBetween } from "@/lib/format";
 import { toast } from "@/lib/toast";
+import { useArrastar } from "@/lib/useArrastar";
 import { DEFAULT_RULES, type Destination, type Poi, type Profile } from "@/lib/types";
 
 const LeafletMap = dynamic(() => import("@/components/LeafletMap"), { ssr: false, loading: () => <div className="lmap" /> });
@@ -15,6 +17,7 @@ const LeafletMap = dynamic(() => import("@/components/LeafletMap"), { ssr: false
 type Hit = { nome: string; endereco: string; lat: number; lng: number };
 
 export default function NewTripForm({ destinations, profile, today }: { destinations: Destination[]; profile: Profile; today: string }) {
+  const carrossel = useArrastar<HTMLDivElement>();
   const router = useRouter();
   const [dest, setDest] = useState<Destination | null>(destinations[0] ?? null);
   const [destTxt, setDestTxt] = useState(destinations[0] ? destinations[0].nome + ", " + destinations[0].pais : "");
@@ -111,9 +114,16 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
         <input className="input" list="dests" value={destTxt} onChange={(e) => pickDest(e.target.value)} placeholder="Para onde você vai?" />
         <datalist id="dests">{destinations.map((d) => <option key={d.id} value={d.nome + ", " + d.pais} />)}</datalist>
       </div>
-      <div className="chips" style={{ margin: "-4px 0 14px" }}>
-        {destinations.slice(0, 6).map((d) => (
-          <button key={d.id} className={"chip " + (dest?.id === d.id ? "on" : "")} onClick={() => pickDest(d.nome + ", " + d.pais)}>{d.nome}</button>
+      <div className="sec-t dest-cards-t" style={{ marginTop: 0 }}>
+        Destinos populares
+        {destinations.length > 2 && <small>arraste para ver mais <Icon name="right" /></small>}
+      </div>
+      <div className="dest-cards" ref={carrossel}>
+        {destinations.slice(0, 8).map((d) => (
+          <button key={d.id} className={"dcard " + (dest?.id === d.id ? "on" : "")} onClick={() => pickDest(d.nome + ", " + d.pais)} aria-pressed={dest?.id === d.id}>
+            <TripArt h={200} c1={d.cor1} c2={d.cor2} id={"dc" + d.id} foto={d.fotoUrl} />
+            <span><b>{d.nome}</b><small>{d.pais}</small></span>
+          </button>
         ))}
       </div>
       {!dest && destTxt.trim().length > 2 && (

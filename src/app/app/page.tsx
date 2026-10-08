@@ -38,7 +38,7 @@ export default async function Inicio() {
           {active ? (
             <Link className="trip-hero" href={"/app/viagem/" + active.id}>
               <div className="art">
-                <TripArt h={150} c1={active.cor1} c2={active.cor2} />
+                <TripArt h={150} c1={active.cor1} c2={active.cor2} foto={active.fotoUrl} />
                 <span className="count">{count}</span>
               </div>
               <div className="inf">
@@ -92,7 +92,7 @@ export default async function Inicio() {
             const st = tripStatus(t, today);
             return (
               <Link key={t.id} className="mini-trip" href={st === "Encerrada" ? "/app/viagem/" + t.id + "/avaliar" : "/app/viagem/" + t.id}>
-                <span className="th"><TripArt h={150} c1={t.cor1} c2={t.cor2} id={"sky" + t.id} /></span>
+                <span className="th"><TripArt h={150} c1={t.cor1} c2={t.cor2} id={"sky" + t.id} foto={t.fotoUrl} /></span>
                 <span style={{ flex: 1 }}>
                   <b>{t.destino}</b><br />
                   <small className="muted">{st === "Encerrada" ? "Encerrada · avalie os lugares que visitou" : rangeTxt(t.inicio, t.fim)}{t.access !== "owner" ? " · convidado" : ""}</small>
