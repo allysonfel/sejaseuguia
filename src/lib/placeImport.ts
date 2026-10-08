@@ -296,6 +296,10 @@ const OSM_KIND: Record<string, Kind> = {
   beach: KINDS.find((x) => x.k.cat === "Praia")!.k,
 };
 
+// Lugares do OSM que valem mesmo sem Wikidata, Wikipédia, site ou horário.
+const NOME_NATURAL = /^(praia|piscinas? naturais|mirante|cachoeira|lagoa|trilha|ru[ií]nas|forte|fortaleza|ilha|recife|gal[eé]s|dunas?|falésias?|cânion|canyon|gruta|parque (estadual|nacional|natural)|igreja|capela|museu)\b/i;
+const NATURAL_OSM = (t: Tags) => t.natural === "beach" || t.tourism === "viewpoint" || NOME_NATURAL.test(t["name:pt"] || t.name || "");
+
 /** Atrações com nome no OSM perto do centro, das mais "completas" (com Wikidata, Wikipédia, site, horário) para as menos. */
 async function osmSights(dest: Destination, raioKm: number): Promise<{ cand: Cand; tags: Tags }[]> {
   const r = Math.min(raioKm, 15) * 1000;
@@ -315,14 +319,15 @@ async function osmSights(dest: Destination, raioKm: number): Promise<{ cand: Can
         tags: t,
         cand: {
           q: "osm" + e.id, nome: (t["name:pt"] || t.name).slice(0, 120), ...coord(e), fama: nota(t), ptwiki: wp ? wp[1] : null,
-          k: t.natural === "beach" ? OSM_KIND.beach : OSM_KIND[t.tourism], fonte: "OpenStreetMap",
+          k: t.natural === "beach" || /^praia/i.test(t["name:pt"] || t.name) ? OSM_KIND.beach : OSM_KIND[t.tourism], fonte: "OpenStreetMap",
           nomeEstrangeiro: !t["name:pt"] && !lusofono, wiki: t.wikipedia && !wp ? t.wikipedia : null,
         },
       };
     })
-    // sem nenhum desses sinais costuma ser ruído (as miniaturas do Mini Mundo de Gramado são "attraction")
-    .filter((c) => c.cand.fama >= 1)
-    .sort((a, b) => b.cand.fama - a.cand.fama);
+    // sem nenhum desses sinais costuma ser ruído (as miniaturas do Mini Mundo de Gramado são "attraction"),
+    // menos praia, mirante e lugar com nome de atração natural ou histórica (Maragogi só tem isso no OSM)
+    .filter((c) => c.cand.fama >= 1 || NATURAL_OSM(c.tags))
+    .sort((a, b) => b.cand.fama - a.cand.fama || Number(NATURAL_OSM(b.tags)) - Number(NATURAL_OSM(a.tags)));
 }
 
 export async function importDestination(dest: Destination, raioKm = 8, opts: { auto?: boolean; atualizar?: boolean } = {}): Promise<ImportResult> {
@@ -368,7 +373,11 @@ export async function importDestination(dest: Destination, raioKm = 8, opts: { a
       for (const c of await osmSights(dest, raio)) {
         if (sights.filter((x) => !x.k.meal).length >= MIN_AUTO + 12) break;
         if (nomes.has(norm(c.cand.nome)) || sights.some((x) => km(x, c.cand) < 0.08)) continue;
+        if ((used.get(c.cand.k.cat) ?? 0) >= (CAPS[c.cand.k.cat] ?? 3)) continue;
+        // sem sinal e colado em outro sem sinal: parque de miniaturas ou peças de um mesmo lugar
+        if (c.cand.fama === 0 && sights.some((x) => x.fonte && x.fama === 0 && km(x, c.cand) < 0.15)) continue;
         nomes.add(norm(c.cand.nome));
+        used.set(c.cand.k.cat, (used.get(c.cand.k.cat) ?? 0) + 1);
         sights.push(c.cand);
         osm.set(c.cand.q, c.tags);
       }
@@ -408,16 +417,19 @@ export async function importDestination(dest: Destination, raioKm = 8, opts: { a
   // 3) restaurantes: o melhor perto de cada atração principal, para o almoço cair perto do roteiro
   const anchors = drafts.filter((d) => d.cat !== "Parque" && !d.meal).slice(0, 16);
   if (anchors.length) {
+    // automático (cidade pequena, praia): restaurante sem tipo de cozinha no OSM e um pouco mais longe da atração
+    const perto = auto ? 0.8 : 0.45;
     const local = CUISINE[norm(dest.pais)] ?? ["regional", "local"];
     const isLocal = (t: Tags) => local.some((c) => (t.cuisine ?? "").toLowerCase().includes(c));
     const score = (t: Tags) => (t.wikidata ? 4 : 0) + (isLocal(t) ? 3 : 0) + (t.website || t["contact:website"] ? 1 : 0) +
       (parseOpeningHours(t.opening_hours) ? 1 : 0) + (t.brand || t["brand:wikidata"] ? -10 : 0);
     try {
-      const rests = await overpass(`[out:json][timeout:35];(${anchors.map((a) => `nw(around:450,${a.lat},${a.lng})["amenity"="restaurant"]["name"]["cuisine"];`).join("")});out center tags;`);
+      const rests = await overpass(`[out:json][timeout:35];(${anchors.map((a) => `nw(around:${perto * 1000},${a.lat},${a.lng})["amenity"="restaurant"]["name"]${auto ? "" : '["cuisine"]'};`).join("")});out center tags;`);
       const picked = new Set<number>();
       for (const a of anchors) {
         const best = rests
-          .filter((e) => !picked.has(e.id) && km(a, coord(e)) <= 0.5 && score(e.tags!) >= 1)
+          // automático aceita restaurante só com o tipo de cozinha (cidade pequena raramente tem mais que isso no OSM)
+          .filter((e) => !picked.has(e.id) && km(a, coord(e)) <= perto && score(e.tags!) >= (auto ? 0 : 1))
           .sort((x, y) => score(y.tags!) - score(x.tags!) || km(a, coord(x)) - km(a, coord(y)))[0];
         if (!best) continue;
         picked.add(best.id);

@@ -1,6 +1,7 @@
 import { apiTraveler, fail, ok } from "@/lib/api";
 import { normBusca } from "@/lib/busca";
 import { mapDest, type DestRow } from "@/lib/data";
+import { MIN_ROTEIRO } from "@/lib/importFila";
 import { ensureSchema, sql } from "@/lib/db";
 import type { DestinoBusca, Regiao } from "@/lib/types";
 
@@ -15,7 +16,8 @@ export async function GET(req: Request) {
   if (!(await apiTraveler())) return fail("Entre de novo para continuar.", 401);
   await ensureSchema();
   const p = new URL(req.url).searchParams;
-  const pronto = sql`EXISTS (SELECT 1 FROM pois x WHERE x.destination_id = d.id AND x.active)`;
+  // pronto = já dá para montar roteiro (mesmo mínimo da criação da viagem)
+  const pronto = sql`((SELECT count(*) FROM pois x WHERE x.destination_id = d.id AND x.active) >= ${MIN_ROTEIRO})`;
 
   const regiao = (p.get("regiao") ?? "").toUpperCase();
   if (regiao) {

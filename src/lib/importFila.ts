@@ -11,6 +11,8 @@ import type { ImportStatus } from "./types";
 // Prioridade: viajante esperando (0) passa na frente da pré-carga do painel (1), que anda devagar.
 
 const MIN_ATRACOES = 8;
+/** Mínimo de lugares para montar um roteiro (o mesmo limite de POST /api/trips). */
+export const MIN_ROTEIRO = 3;
 /** Destino importado automaticamente há mais que isso é reimportado (lugares novos + horários reais). */
 export const REIMPORTAR_DIAS = 90;
 const RESPIRO = 3000, RESPIRO_PRECARGA = 15000;
@@ -24,8 +26,9 @@ export async function estadoImportacao(id: number): Promise<EstadoImportacao | n
     SELECT import_status, import_em, import_prioridade, (SELECT count(*)::int FROM pois p WHERE p.destination_id = d.id AND p.active) AS lugares
     FROM destinations d WHERE id = ${id}`;
   if (!d) return null;
-  // tem lugar ativo = pronto (ou "poucos"); sem lugar, "pronto" antigo não vale (a equipe pode ter desativado tudo)
-  const status: ImportStatus | null = d.lugares > 0
+  // lugares suficientes = pronto (ou "poucos"); com menos, "pronto" antigo não vale (a equipe pode ter
+  // desativado lugares, ou a importação antiga achou só 1 ou 2): volta a precisar de importação
+  const status: ImportStatus | null = d.lugares >= MIN_ROTEIRO
     ? (d.import_status === "importando" ? "importando" : d.import_status === "poucos" ? "poucos" : "pronto")
     : (d.import_status === "pronto" || d.import_status === "poucos" ? null : d.import_status);
   const [{ n }] = status === "fila"
@@ -43,7 +46,7 @@ export async function pedirImportacao(id: number): Promise<EstadoImportacao | nu
   await sql`
     UPDATE destinations d SET import_status = 'fila', import_em = now(), import_erro = NULL, import_prioridade = 0
     WHERE id = ${id}
-      AND NOT EXISTS (SELECT 1 FROM pois p WHERE p.destination_id = d.id AND p.active)
+      AND (SELECT count(*) FROM pois p WHERE p.destination_id = d.id AND p.active) < ${MIN_ROTEIRO}
       AND (import_status IS NULL OR import_status IN ('pronto', 'poucos')
            OR (import_status = 'falhou' AND import_em < now() - interval '10 minutes'))`;
   return estadoImportacao(id);
@@ -127,8 +130,10 @@ async function importarUm(id: number) {
       c = await ativos();
     }
     const n = c.n;
-    const status: ImportStatus = n === 0 ? "falhou" : c.atracoes < MIN_ATRACOES ? "poucos" : "pronto";
-    const erro = n === 0 ? "Nenhum lugar encontrado nos dados abertos." : r.avisos.join(" ") || null;
+    const status: ImportStatus = n < MIN_ROTEIRO ? "falhou" : c.atracoes < MIN_ATRACOES ? "poucos" : "pronto";
+    const erro = n === 0 ? "Nenhum lugar encontrado nos dados abertos."
+      : n < MIN_ROTEIRO ? `Só ${n} ${n === 1 ? "lugar encontrado" : "lugares encontrados"} nos dados abertos (o roteiro precisa de ${MIN_ROTEIRO}).`
+      : r.avisos.join(" ") || null;
     await sql`UPDATE destinations SET import_status = ${status}, import_em = now(), import_erro = ${erro} WHERE id = ${id}`;
     console.log(`[fila] ${dest.nome}: ${status}, ${r.atracoes} atrações e ${r.restaurantes} restaurantes novos${atualizacao ? `, ${r.atualizados ?? 0} atualizados` : ""} em ${Math.round((Date.now() - t0) / 1000)} s`);
     // o viajante já pode montar o roteiro; nomes e histórias em português chegam logo depois

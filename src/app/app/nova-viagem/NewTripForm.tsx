@@ -9,6 +9,7 @@ import TripArt from "@/components/TripArt";
 import { api } from "@/lib/client";
 import { eligible, travel } from "@/lib/engine";
 import { addDays, daysBetween } from "@/lib/format";
+import { somAcerto } from "@/lib/sons";
 import { toast } from "@/lib/toast";
 import { useArrastar } from "@/lib/useArrastar";
 import { DEFAULT_RULES, type Destination, type DestinoBusca, type ImportStatus, type Poi, type Profile, type Regiao } from "@/lib/types";
@@ -18,6 +19,15 @@ const LeafletMap = dynamic(() => import("@/components/LeafletMap"), { ssr: false
 type Hit = { nome: string; endereco: string; lat: number; lng: number };
 type Busca = { regioes: Regiao[]; cidades: DestinoBusca[]; titulo?: string };
 type Preparo = { status: ImportStatus | null; lugares: number; posicao: number };
+
+// Etapas mostradas enquanto os lugares de um destino novo são importados (o servidor leva ~1 min).
+const ETAPAS_PREPARO: [number, string][] = [
+  [0, "Procurando as atrações mais famosas"],
+  [12, "Buscando restaurantes e cafés por perto"],
+  [26, "Conferindo horários de funcionamento"],
+  [40, "Traduzindo as histórias dos lugares"],
+  [60, "Quase lá, organizando tudo"],
+];
 
 const rotulo = (d: Destination) => d.nome + ", " + (d.uf ? d.uf + ", " : "") + d.pais;
 
@@ -30,6 +40,8 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
   const [destTxt, setDestTxt] = useState(destinations[0] ? rotulo(destinations[0]) : "");
   const [achados, setAchados] = useState<Busca | null>(null);
   const buscaId = useRef(0);
+  // busca no catálogo em andamento (texto digitado ou estado/país aberto)
+  const [buscando, setBuscando] = useState<string | null>(null);
   const [ini, setIni] = useState(addDays(today, 14));
   const [fim, setFim] = useState(addDays(today, 17));
   const [hotelNome, setHotelNome] = useState("");
@@ -41,6 +53,9 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
   const [err, setErr] = useState<string | null>(null);
   const [gen, setGen] = useState<number | null>(null);
   const [requested, setRequested] = useState(false);
+  // segundos desde que começou a preparar o destino (barra de progresso estimada)
+  const [seg, setSeg] = useState(0);
+  const preparoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!dest) return;
@@ -62,6 +77,7 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
         if (e.status === "pronto" || e.status === "poucos") {
           setDest((d) => (d && d.id === destId ? { ...d, pronto: true, importStatus: e.status } : d));
           if (e.status === "poucos") toast("Encontramos poucos lugares por lá: o roteiro pode ficar mais curto");
+          else if (!primeira) { somAcerto(); toast(`Pronto! ${e.lugares} lugares encontrados. Já dá para montar o roteiro`); }
           return;
         }
         if (e.status === "falhou") return;
@@ -74,7 +90,11 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
       timer = setTimeout(() => tick(false), 3000);
     };
     tick(true);
-    return () => { live = false; clearTimeout(timer); };
+    const t0 = Date.now();
+    const relogio = setInterval(() => setSeg(Math.round((Date.now() - t0) / 1000)), 1000);
+    // leva a pessoa até o aviso de preparo, para ela ver que algo está acontecendo
+    const rolar = setTimeout(() => preparoRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+    return () => { live = false; clearTimeout(timer); clearInterval(relogio); clearTimeout(rolar); setSeg(0); };
   }, [destId, destPronto]);
 
   function pickDest(d: DestinoBusca | null) {
@@ -91,23 +111,30 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
     setDestTxt(txt);
     if (dest && txt !== rotulo(dest)) pickDest(null);
     const id = ++buscaId.current;
-    if (txt.trim().length < 2) return setAchados(null);
+    if (txt.trim().length < 2) { setBuscando(null); return setAchados(null); }
+    setBuscando(txt.trim());
     setTimeout(async () => {
       if (id !== buscaId.current) return;
       const r = await api<Busca>("/api/destinations/search?q=" + encodeURIComponent(txt.trim())).catch(() => null);
-      if (r && id === buscaId.current) setAchados(r);
+      if (id !== buscaId.current) return;
+      setBuscando(null);
+      if (r) setAchados(r);
+      else toast("Não deu para buscar agora. Confira a conexão e tente de novo");
     }, 250);
   }
 
   async function abrirRegiao(r: Regiao) {
     const id = ++buscaId.current;
+    setBuscando(r.nome);
     const res = await api<Busca>("/api/destinations/search?regiao=" + r.iso).catch(() => null);
+    if (id === buscaId.current) setBuscando(null);
     if (res && id === buscaId.current) setAchados({ regioes: [], cidades: res.cidades, titulo: (r.tipo === "estado" ? "Cidades em " : "Destinos em ") + r.nome });
   }
 
   async function search() {
     if (!dest || hotelNome.trim().length < 3) return;
     setSearching(true);
+    setHits(null);
     try {
       const r = await api<{ results: Hit[] }>(`/api/geo/search?q=${encodeURIComponent(hotelNome + " " + dest.nome)}&lat=${dest.lat}&lng=${dest.lng}`);
       setHits(r.results);
@@ -135,7 +162,10 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
   async function generate() {
     setErr(null);
     if (!dest) return setErr("Escolha um destino da lista.");
-    if (!dest.pronto) return setErr(prep?.status === "falhou" ? "Ainda não temos os lugares de " + dest.nome + " para montar o roteiro." : "Ainda estamos preparando os lugares de " + dest.nome + ". Só mais alguns segundos.");
+    if (!dest.pronto) {
+      preparoRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return setErr(prep?.status === "falhou" ? "Ainda não temos os lugares de " + dest.nome + " para montar o roteiro." : "Ainda estamos preparando os lugares de " + dest.nome + ". Só mais alguns segundos.");
+    }
     if (!hotel) return setErr("Busque a hospedagem ou toque no mapa para marcar onde ela fica.");
     setGen(0);
     const steps = setInterval(() => setGen((k) => (k == null ? k : Math.min(k + 1, GEN.length - 1))), 380);
@@ -168,8 +198,19 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
     <div className="pad">
       <div className="field">
         <label>Destino</label>
-        <input className="input" value={destTxt} onChange={(e) => digitar(e.target.value)} placeholder="Cidade, estado ou país" autoComplete="off" />
-        {achados && (
+        <div className={"input-ic" + (buscando ? " on" : "")}>
+          <input className="input" value={destTxt} onChange={(e) => digitar(e.target.value)} placeholder="Cidade, estado ou país" autoComplete="off" aria-busy={!!buscando} />
+          {buscando ? <span className="spin spin-ok" aria-hidden /> : <Icon name="search" />}
+        </div>
+        {buscando && (
+          <div className="box dest-busca buscando" role="status">
+            <div className="busca-t"><span className="spin spin-ok" aria-hidden />Buscando “{buscando}”…</div>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="near esqueleto" aria-hidden><span className="li-ic" /><span className="li-m"><b /><small /></span></div>
+            ))}
+          </div>
+        )}
+        {achados && !buscando && (
           <div className="box dest-busca">
             {achados.titulo && <div className="box-t" style={{ marginBottom: 2 }}>{achados.titulo}</div>}
             {!achados.regioes.length && !achados.cidades.length && <div className="near"><small className="muted">Nenhum destino com esse nome.</small></div>}
@@ -206,20 +247,29 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
           </button>
         ))}
       </div>
-      {dest && !dest.pronto && prep?.status !== "falhou" && (
-        <div className="box preparo" role="status">
-          <Gui size={42} />
-          <div>
-            <b>Preparando os lugares de {dest.nome}…</b>
-            <div className="muted">
-              Buscamos atrações, restaurantes e horários em dados abertos. Leva em torno de um minuto
-              {prep && prep.posicao > 0 ? ` (${prep.posicao} ${prep.posicao === 1 ? "destino" : "destinos"} na frente)` : ""}.
-              Enquanto isso, escolha as datas e a hospedagem.
+      {dest && !dest.pronto && prep?.status !== "falhou" && (() => {
+        const naFila = !!prep && prep.status === "fila" && prep.posicao > 0;
+        const etapa = naFila
+          ? `Na fila: ${prep!.posicao} ${prep!.posicao === 1 ? "destino" : "destinos"} na frente`
+          : [...ETAPAS_PREPARO].reverse().find(([s]) => seg >= s)![1];
+        // progresso estimado: anda rápido no começo e desacelera, sem nunca chegar a 100% antes de terminar
+        const pct = Math.min(95, Math.round((1 - Math.exp(-seg / 30)) * 100));
+        return (
+          <div className="box preparo" role="status" aria-live="polite" ref={preparoRef}>
+            <div className="preparo-l">
+              <Gui size={52} />
+              <div style={{ flex: 1 }}>
+                <b>Preparando os lugares de {dest.nome}</b>
+                <div className="preparo-etapa" key={etapa}><span className="spin spin-ok" aria-hidden />{etapa}…</div>
+              </div>
+              <span className="mono preparo-seg">{seg}s</span>
             </div>
+            <div className="preparo-barra"><i style={{ width: Math.max(4, pct) + "%" }} /></div>
+            <div className="muted">Carregando os lugares. Isso leva em torno de um minuto.</div>
           </div>
-        </div>
-      )}
-      {((!dest && !achados && destTxt.trim().length > 2) || (dest && !dest.pronto && prep?.status === "falhou")) && (
+        );
+      })()}
+      {((!dest && !achados && !buscando && destTxt.trim().length > 2) || (dest && !dest.pronto && prep?.status === "falhou")) && (
         <div className="box" style={{ fontSize: 13 }}>
           <b>Ainda não conseguimos montar roteiros para “{dest ? dest.nome : destTxt.trim()}”.</b>
           <div className="muted" style={{ margin: "4px 0 10px" }}>{dest ? "Não achamos lugares suficientes nos dados abertos agora. " : ""}A equipe da agência vê os destinos mais pedidos e adiciona os próximos.</div>
@@ -241,8 +291,16 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
           <label>Hospedagem, o Ponto Zero da viagem</label>
           <div className="row" style={{ gap: 8 }}>
             <input className="input" value={hotelNome} placeholder="Nome do hotel ou endereço" onChange={(e) => setHotelNome(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search()} />
-            <button className="btn btn-navy" style={{ height: 48 }} onClick={search} disabled={searching || hotelNome.trim().length < 3}><Icon name="search" /></button>
+            <button className="btn btn-navy" style={{ height: 48 }} onClick={search} disabled={searching || hotelNome.trim().length < 3} aria-label="Buscar hospedagem" aria-busy={searching}>
+              {searching ? <span className="spin spin-ok spin-claro" aria-hidden /> : <Icon name="search" />}
+            </button>
           </div>
+          {searching && (
+            <div className="box dest-busca buscando" role="status" style={{ marginTop: 8 }}>
+              <div className="busca-t"><span className="spin spin-ok" aria-hidden />Procurando “{hotelNome.trim()}” em {dest.nome}…</div>
+              {[0, 1].map((i) => <div key={i} className="near esqueleto" aria-hidden><span className="li-ic" /><span className="li-m"><b /><small /></span></div>)}
+            </div>
+          )}
           {hits && (
             <div className="box" style={{ padding: "2px 14px", marginTop: 8 }}>
               {hits.length === 0 && <div className="near"><small className="muted">Nada encontrado. Toque no mapa para marcar o lugar.</small></div>}
@@ -298,7 +356,11 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
         Já tem voo, ingressos ou restaurante reservados? Depois de montar, adicione na aba Reservas: o roteiro se ajusta aos horários.
       </div>
       {err && <div className="err">{err}</div>}
-      <button className="btn btn-sun btn-block" style={{ marginTop: 6 }} onClick={generate} disabled={gen != null}><Icon name="route" />Montar meu roteiro</button>
+      <button className="btn btn-sun btn-block" style={{ marginTop: 6 }} onClick={generate} disabled={gen != null} aria-busy={!!dest && !dest.pronto && prep?.status !== "falhou"}>
+        {dest && !dest.pronto && prep?.status !== "falhou"
+          ? <><span className="spin spin-ok" aria-hidden />Preparando os lugares de {dest.nome}…</>
+          : <><Icon name="route" />Montar meu roteiro</>}
+      </button>
 
       {gen != null && (
         <div className="gen">

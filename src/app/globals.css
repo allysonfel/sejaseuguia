@@ -231,8 +231,6 @@ input[type="date"]::-webkit-date-and-time-value,input[type="time"]::-webkit-date
 .dest-mini img{width:100%;height:100%;object-fit:cover;display:block}
 .preparo{display:flex;gap:12px;align-items:flex-start;font-size:13px;background:var(--sun-bg);border-color:#F6DDA6}
 .preparo b{display:block;margin-bottom:2px;color:var(--sun-ink)}
-.preparo .spin{width:20px;height:20px;border-radius:50%;border:3px solid #F6DDA6;border-top-color:var(--sun);animation:spin .8s linear infinite;flex:none;margin-top:1px}
-@media (prefers-reduced-motion:reduce){.preparo .spin{animation-duration:2.4s}}
 
 /* aviso de lugares importados automaticamente (topo da viagem) */
 .aviso-auto{display:flex;gap:10px;align-items:flex-start;margin:12px 18px 0;padding:12px 12px 12px 14px;border-radius:16px;background:var(--violet-bg);color:#3D2E99;font-size:12.5px;line-height:1.45}
@@ -326,7 +324,6 @@ a.li:active,button.li:active,.ci:active{transform:scale(.985)}
 .gen h2{animation:qzRise .4s var(--suave) .1s backwards}
 .gen .st{animation:qzRise .35s var(--suave) backwards;animation-delay:calc(var(--i,0) * 70ms + .2s)}
 .gen .st.done .c{animation:qzBadge .4s var(--mola)}
-.preparo .gui{margin-top:-4px}
 
 /* folhas de baixo, avisos e estados vazios */
 .sheet{animation:up .34s var(--mola)}
@@ -347,3 +344,32 @@ a.li:active,button.li:active,.ci:active{transform:scale(.985)}
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;animation-delay:0s!important;transition-duration:.01ms!important}
   .festa-tela,.festa-ponto{display:none}
 }
+
+/* esperas visíveis na nova viagem: busca de destino, de hotel e preparo de destino novo */
+.spin{display:inline-block;width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(16,27,59,.15);border-top-color:var(--sun);animation:spin .8s linear infinite;flex:none}
+.spin-claro{border-color:rgba(255,255,255,.25);border-top-color:var(--sun)}
+.input-ic{position:relative}
+.input-ic .input{padding-right:42px}
+.input-ic>svg,.input-ic>.spin{position:absolute;right:14px;top:50%;margin-top:-9px;width:18px;height:18px;color:var(--faint);pointer-events:none}
+.input-ic.on .input{border-color:var(--sun);box-shadow:0 0 0 3px rgba(255,178,30,.2)}
+.dest-busca.buscando{animation:qzFade .2s}
+.busca-t{display:flex;align-items:center;gap:10px;padding:12px 0 6px;font-weight:700;font-size:13px;color:var(--sun-ink)}
+.esqueleto{pointer-events:none}
+.esqueleto .li-ic,.esqueleto b,.esqueleto small{background:linear-gradient(90deg,#EEF1F7 25%,#F8F9FC 50%,#EEF1F7 75%);background-size:200% 100%;animation:brilho 1.2s linear infinite}
+.esqueleto b{display:block;height:12px;width:55%;border-radius:6px;margin-bottom:6px}
+.esqueleto small{display:block;height:10px;width:35%;border-radius:6px}
+.esqueleto:nth-child(3) b{width:42%}.esqueleto:nth-child(4) b{width:63%}
+@keyframes brilho{to{background-position:-200% 0}}
+.preparo{display:block;border-width:2px;animation:qzPop .4s var(--mola)}
+.preparo-l{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.preparo b{font-size:15px}
+.preparo-etapa{display:flex;align-items:center;gap:8px;font-weight:700;color:#8A5A00;animation:qzRise .3s var(--suave)}
+.preparo-etapa .spin{width:14px;height:14px;border-width:2px}
+.preparo-seg{font-size:12px;color:#8A5A00;background:#fff;border-radius:99px;padding:3px 8px;align-self:flex-start}
+.preparo-barra{height:8px;border-radius:8px;background:#fff;overflow:hidden;margin-bottom:10px}
+.preparo-barra i{display:block;height:100%;border-radius:8px;background:var(--sun);transition:width 1s linear;position:relative;overflow:hidden}
+.preparo-barra i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);transform:translateX(-100%);animation:qzShine 1.6s ease-in-out infinite}
+.btn .spin{width:16px;height:16px;border-color:rgba(58,38,0,.2);border-top-color:var(--sun-ink)}
+.btn-navy .spin{border-color:rgba(255,255,255,.25);border-top-color:var(--sun)}
+/* indicador de carregamento continua girando mesmo com "reduzir movimento" (é informação, não enfeite) */
+@media (prefers-reduced-motion:reduce){.spin-ok{animation-duration:1.6s!important;animation-iteration-count:infinite!important}}
