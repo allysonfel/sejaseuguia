@@ -373,3 +373,6 @@ a.li:active,button.li:active,.ci:active{transform:scale(.985)}
 .btn-navy .spin{border-color:rgba(255,255,255,.25);border-top-color:var(--sun)}
 /* indicador de carregamento continua girando mesmo com "reduzir movimento" (é informação, não enfeite) */
 @media (prefers-reduced-motion:reduce){.spin-ok{animation-duration:1.6s!important;animation-iteration-count:infinite!important}}
+
+/* passos de "Montando seu roteiro": cobre o app inteiro, por cima de janelas e botões flutuantes */
+.app>.gen{z-index:55}

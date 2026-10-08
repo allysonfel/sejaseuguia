@@ -3,6 +3,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Icon from "@/components/Icon";
 import Gui from "@/components/quiz/Gui";
 import TripArt from "@/components/TripArt";
@@ -362,8 +363,9 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
           : <><Icon name="route" />Montar meu roteiro</>}
       </button>
 
-      {gen != null && (
-        <div className="gen">
+      {/* desenhada na moldura do app (.app), não na área que rola: cobre a tela toda mesmo com a página rolada */}
+      {gen != null && createPortal(
+        <div className="gen" role="status" aria-live="polite">
           <div className="gen-gui"><Gui humor={gen >= GEN.length - 1 ? "festa" : "idle"} size={72} /></div>
           <h2>Montando seu roteiro por {dest?.nome}</h2>
           {GEN.map((s, i) => (
@@ -371,7 +373,8 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
               <span className="c">{i < gen && <Icon name="check" />}</span>{s}
             </div>
           ))}
-        </div>
+        </div>,
+        document.querySelector(".app") ?? document.body,
       )}
     </div>
   );
