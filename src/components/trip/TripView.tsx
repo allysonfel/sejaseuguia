@@ -15,6 +15,7 @@ import { toast } from "@/lib/toast";
 import type { TripAccess } from "@/lib/data";
 import type { Poi, Profile, ReplanKind, Reservation, Rules, Trip, TripMember } from "@/lib/types";
 import AssistantChat from "./AssistantChat";
+import { useAssistenteDaViagem } from "@/components/AssistenteGeral";
 import DayTimeline from "./DayTimeline";
 import MapTab from "./MapTab";
 import PeopleTab, { ShareSheet } from "./PeopleTab";
@@ -62,6 +63,7 @@ export default function TripView(props: Props) {
   const [members, setMembers] = useState(props.members);
   const [sheet, setSheet] = useState<null | "addres" | "share">(null);
   const [chat, setChat] = useState(false);
+  useAssistenteDaViagem(canEdit);
   // Aviso único quando o roteiro usa lugares importados automaticamente (não revisados pela agência).
   const autos = useMemo(() => ed.days.reduce((n, x) => n + x.items.filter((it) => pois[it.p]?.revisado === false).length, 0), [ed.days, pois]);
   const chaveAviso = "ssg-aviso-auto-" + trip.id;

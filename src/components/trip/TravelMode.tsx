@@ -12,6 +12,7 @@ import { somAcerto, somFesta } from "@/lib/sons";
 import type { TripAccess } from "@/lib/data";
 import type { Poi, Profile, Rules, Trip } from "@/lib/types";
 import AssistantChat from "./AssistantChat";
+import { useAssistenteDaViagem } from "@/components/AssistenteGeral";
 import { useTripEditor } from "./useTripEditor";
 
 type Weather = { temp: number; txt: string; rainSoon: boolean };
@@ -50,6 +51,7 @@ export default function TravelMode({ trip, pois, profile, rules, live, dayIdx, n
   const [weather, setWeather] = useState<Weather | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   const [chat, setChat] = useState(false);
+  useAssistenteDaViagem(canEdit);
   // "Concluí": confete no card da próxima atividade e, no fim do dia, festa com o Gui
   const [feitas, setFeitas] = useState(0);
   const [festa, setFesta] = useState(false);

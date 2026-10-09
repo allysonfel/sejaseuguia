@@ -49,6 +49,7 @@ export default function PrivacyView({ prefs: initial, deletePending, consent }: 
       <div className="box" style={{ fontSize: 13, lineHeight: 1.6 }}>
         <div className="box-t">Fotos do O que é esse lugar?</div>
         <p>Quando você tira uma foto para descobrir um lugar, ela é enviada a um serviço de inteligência artificial de outra empresa (Z.ai ou Groq) para reconhecer o que aparece nela. Junto vai só a lista de lugares cadastrados perto de você, não a sua localização exata.</p>
+        <p>No assistente da viagem, os pedidos comuns são entendidos no próprio app. Quando ele não entende um pedido, o texto que você escreveu e um resumo do roteiro do dia (lugares, horários e o nome do hotel) vão para o mesmo serviço de inteligência artificial, só para interpretar o pedido. Seus dados de cadastro não vão junto. No assistente das outras telas, a pergunta vai junto com o seu primeiro nome, o perfil de viajante e o resumo das suas viagens (destino, datas, hotel e lugares de cada dia), só para responder. Nada disso fica guardado.</p>
         <p style={{ marginTop: 8 }}>A foto não fica guardada no Seja Seu Guia: ela é usada só para essa resposta. Esses serviços podem usar o que recebem para melhorar os modelos deles, então evite fotografar pessoas, documentos ou qualquer coisa pessoal.</p>
         <p style={{ marginTop: 8 }}>Prefere não enviar fotos? Use o botão Só ver o que está perto de mim: ele usa apenas a localização.</p>
       </div>

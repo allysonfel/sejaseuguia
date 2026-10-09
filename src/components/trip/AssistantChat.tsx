@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Icon from "@/components/Icon";
-import { QUICK, reply, type Reply } from "@/lib/assistant";
+import { QUICK, entender, executar, reply, resumir, type Intencao, type Reply } from "@/lib/assistant";
 import type { Ctx } from "@/lib/engine";
 import type { DayPlan, ReplanKind } from "@/lib/types";
 
@@ -29,17 +29,34 @@ export default function AssistantChat({ ctx, days, dayIdx, moeda, onClose, onApp
     box.current?.scrollTo({ top: box.current.scrollHeight });
   }, [msgs, typing]);
 
-  function ask(q: string) {
+  // Regras primeiro (na hora, sem IA). Só o que elas não entendem vai para a IA;
+  // se a IA falhar ou demorar, mostra a ajuda em vez de chutar.
+  async function ask(q: string) {
     q = q.trim();
     if (!q || typing) return;
     setTxt("");
     setMsgs((m) => [...m, { r: "u", t: q }]);
     setTyping(true);
-    setTimeout(() => {
-      const r = reply(q, days, dayIdx, ctx, moeda);
-      setMsgs((m) => [...m, { r: "b", t: r.t, reply: r }]);
-      setTyping(false);
-    }, 450);
+    let r: Reply;
+    const local = entender(q, days[dayIdx], ctx);
+    if (local) {
+      await new Promise((ok) => setTimeout(ok, 450));
+      r = executar(local, days, dayIdx, ctx, moeda);
+    } else {
+      let ia: Intencao | null = null;
+      try {
+        const res = await fetch("/api/assistant", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ q, resumo: resumir(days, dayIdx, ctx, moeda) }),
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (res.ok) ia = ((await res.json()) as { intencao: Intencao | null }).intencao;
+      } catch { /* sem rede ou demorou: cai na ajuda */ }
+      r = ia ? executar(ia, days, dayIdx, ctx, moeda) : reply(q, days, dayIdx, ctx, moeda);
+    }
+    setMsgs((m) => [...m, { r: "b", t: r.t, reply: r }]);
+    setTyping(false);
   }
 
   return (

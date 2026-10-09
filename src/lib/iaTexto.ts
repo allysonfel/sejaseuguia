@@ -37,12 +37,12 @@ Responda só com JSON: {"itens":[{"i":0,"nome":"...","historia":"..."}]}
 Itens: ${JSON.stringify(itens)}`;
 }
 
-async function chamar(p: Provedor, texto: string): Promise<string> {
+async function chamar(p: Provedor, texto: string, maxTokens = 2500, timeoutMs = 60_000, extra: Record<string, unknown> = {}): Promise<string> {
   const res = await fetch(p.url, {
     method: "POST",
     headers: { Authorization: `Bearer ${p.chave()}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ ...p.corpo(), messages: [{ role: "user", content: texto }], temperature: 0.2, max_tokens: 2500 }),
-    signal: AbortSignal.timeout(60_000),
+    body: JSON.stringify({ ...p.corpo(), ...extra, messages: [{ role: "user", content: texto }], temperature: 0.2, max_tokens: maxTokens }),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const r = (await res.json().catch(() => ({}))) as { error?: { message?: string }; choices?: { message?: { content?: string } }[] };
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${r.error?.message ?? ""}`.slice(0, 300));
@@ -95,4 +95,28 @@ export async function traduzirLugares(cidade: string, pais: string, itens: ItemT
     if (k + 6 < itens.length) await new Promise((ok) => setTimeout(ok, 1500));
   }
   return out;
+}
+
+/**
+ * Pergunta rápida (assistente da viagem): cada provedor uma vez, com no máximo uma nova tentativa
+ * se o limite por minuto pedir espera curta. `modelo` troca o modelo por provedor (cota separada). null se todos falharem.
+ */
+export async function perguntarRapido(texto: string, maxTokens: number, timeoutMs: number, modelo: Record<string, string | undefined> = {}): Promise<string | null> {
+  for (const p of ordem()) {
+    const extra = modelo[p.nome] ? { model: modelo[p.nome] } : {};
+    for (let tentativa = 0; tentativa < 2; tentativa++) {
+      try {
+        const r = await chamar(p, texto, maxTokens, timeoutMs, extra);
+        if (r.trim()) return r;
+        break;
+      } catch (e) {
+        const msg = (e as Error).message;
+        const espera = /^HTTP 429/.test(msg) ? Number(/try again in ([\d.]+)s/i.exec(msg)?.[1] ?? NaN) : NaN;
+        if (tentativa === 0 && espera <= 3) { await new Promise((ok) => setTimeout(ok, espera * 1000 + 200)); continue; }
+        console.error(`[ia-texto:${p.nome}]`, msg.slice(0, 200));
+        break;
+      }
+    }
+  }
+  return null;
 }
