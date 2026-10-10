@@ -9,12 +9,12 @@ import type { IconName } from "@/lib/icons";
 import { toast } from "@/lib/toast";
 import type { Profile, Ritmo } from "@/lib/types";
 
-const COMP: [string, IconName][] = [["Sozinho", "user"], ["Casal", "users"], ["Família com crianças", "users"], ["Amigos ou grupo", "users"], ["Com idosos", "users"]];
+const COMP: [string, IconName][] = [["Sozinho", "user"], ["Casal", "heart"], ["Família com crianças", "family"], ["Amigos ou grupo", "users"], ["Com idosos", "elder"]];
 const INT = ["história", "cultura", "gastronomia", "praias", "natureza", "arquitetura", "museus", "compras", "fotografia", "vida noturna", "experiências locais", "luxo", "esportes", "entretenimento", "família"];
 const RITMO: [Ritmo, IconName, string][] = [
-  ["Tranquilo", "tired", "Até 3 atividades por dia, com pausas longas"],
-  ["Moderado", "walk", "4 a 5 atividades, com tempo para respirar"],
-  ["Intenso", "nav", "O máximo que o dia comportar"],
+  ["Tranquilo", "leaf", "Até 3 atividades por dia, com pausas longas"],
+  ["Moderado", "map", "4 a 5 atividades, com tempo para respirar"],
+  ["Intenso", "bolt", "O máximo que o dia comportar"],
 ];
 const ORC = ["Econômico", "Intermediário", "Premium", "Luxo"];
 const MOB = ["Caminhar", "Transporte público", "Carro", "Táxi ou aplicativo", "Acordar cedo", "Atividades noturnas"];

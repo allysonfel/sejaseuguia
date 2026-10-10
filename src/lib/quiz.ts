@@ -32,10 +32,10 @@ export const QUIZ: QuizQuestion[] = [
     sub: "Muda o ritmo, as distâncias e o tipo de lugar.",
     options: [
       { id: "solo", label: "Só eu", hint: "Liberdade total de roteiro", icon: "user", fx: { comp: "Sozinho" } },
-      { id: "casal", label: "Em casal", hint: "Momentos a dois", icon: "users", fx: { comp: "Casal" } },
-      { id: "familia", label: "Com as crianças", hint: "Diversão para todas as idades", icon: "users", fx: { comp: "Família com crianças", int: ["família"] } },
+      { id: "casal", label: "Em casal", hint: "Momentos a dois", icon: "heart", fx: { comp: "Casal" } },
+      { id: "familia", label: "Com as crianças", hint: "Diversão para todas as idades", icon: "family", fx: { comp: "Família com crianças", int: ["família"] } },
       { id: "amigos", label: "Com amigos ou grupo", hint: "Quanto mais gente, melhor", icon: "users", fx: { comp: "Amigos ou grupo", int: ["entretenimento"] } },
-      { id: "idosos", label: "Com os mais velhos", hint: "Conforto em primeiro lugar", icon: "users", fx: { comp: "Com idosos", evitar: ["Excesso de caminhada"] } },
+      { id: "idosos", label: "Com os mais velhos", hint: "Conforto em primeiro lugar", icon: "elder", fx: { comp: "Com idosos", evitar: ["Excesso de caminhada"] } },
     ],
   },
   {
@@ -43,10 +43,10 @@ export const QUIZ: QuizQuestion[] = [
     title: "Primeira manhã num lugar novo. O que você faz?",
     sub: "Vá no instinto, não tem resposta errada.",
     options: [
-      { id: "cedo", label: "Saio cedinho, antes das multidões", icon: "clock", fx: { mob: ["Acordar cedo"] } },
-      { id: "cafe", label: "Café demorado numa padaria de bairro", icon: "fork", fx: { int: ["gastronomia", "experiências locais"] } },
-      { id: "famoso", label: "Vou direto ao cartão-postal da cidade", icon: "flag", fx: { int: ["história", "arquitetura"] } },
-      { id: "dormir", label: "Durmo até tarde, estou de férias", icon: "tired", fx: { evitar: ["Acordar muito cedo"] } },
+      { id: "cedo", label: "Saio cedinho, antes das multidões", icon: "sunrise", fx: { mob: ["Acordar cedo"] } },
+      { id: "cafe", label: "Café demorado numa padaria de bairro", icon: "coffee", fx: { int: ["gastronomia", "experiências locais"] } },
+      { id: "famoso", label: "Vou direto ao cartão-postal da cidade", icon: "landmark", fx: { int: ["história", "arquitetura"] } },
+      { id: "dormir", label: "Durmo até tarde, estou de férias", icon: "bed", fx: { evitar: ["Acordar muito cedo"] } },
     ],
   },
   {
@@ -56,14 +56,14 @@ export const QUIZ: QuizQuestion[] = [
     multi: true,
     min: 1,
     options: [
-      { id: "museu", label: "Museus e galerias de arte", icon: "grid", fx: { int: ["museus", "cultura"] } },
-      { id: "historia", label: "Castelos, ruínas e histórias antigas", icon: "flag", fx: { int: ["história", "arquitetura"] } },
-      { id: "mercado", label: "Mercado de rua cheio de cheiros", icon: "fork", fx: { int: ["gastronomia", "experiências locais"] } },
-      { id: "mirante", label: "Mirante no pôr do sol", icon: "camera", fx: { int: ["fotografia", "natureza"] } },
-      { id: "praia", label: "Praia ou beira-rio", icon: "globe", fx: { int: ["praias", "natureza"] } },
-      { id: "lojas", label: "Lojinhas e ruas de comércio", icon: "ticket", fx: { int: ["compras"] } },
-      { id: "show", label: "Música ao vivo e bares", icon: "star", fx: { int: ["vida noturna", "entretenimento"], mob: ["Atividades noturnas"] } },
-      { id: "trilha", label: "Trilha ou esporte ao ar livre", icon: "walk", fx: { int: ["esportes", "natureza"] } },
+      { id: "museu", label: "Museus e galerias de arte", icon: "frame", fx: { int: ["museus", "cultura"] } },
+      { id: "historia", label: "Castelos, ruínas e histórias antigas", icon: "castle", fx: { int: ["história", "arquitetura"] } },
+      { id: "mercado", label: "Mercado de rua cheio de cheiros", icon: "store", fx: { int: ["gastronomia", "experiências locais"] } },
+      { id: "mirante", label: "Mirante no pôr do sol", icon: "sunset", fx: { int: ["fotografia", "natureza"] } },
+      { id: "praia", label: "Praia ou beira-rio", icon: "beach", fx: { int: ["praias", "natureza"] } },
+      { id: "lojas", label: "Lojinhas e ruas de comércio", icon: "bag", fx: { int: ["compras"] } },
+      { id: "show", label: "Música ao vivo e bares", icon: "music", fx: { int: ["vida noturna", "entretenimento"], mob: ["Atividades noturnas"] } },
+      { id: "trilha", label: "Trilha ou esporte ao ar livre", icon: "mountain", fx: { int: ["esportes", "natureza"] } },
     ],
   },
   {
@@ -71,9 +71,9 @@ export const QUIZ: QuizQuestion[] = [
     title: "Como é o seu dia perfeito de viagem?",
     sub: "Define quantas atividades cabem por dia.",
     options: [
-      { id: "tranquilo", label: "Poucas paradas, sem relógio", hint: "Até 3 atividades, com pausas longas", icon: "tired", fx: { ritmo: "Tranquilo" } },
-      { id: "moderado", label: "Ver bastante, sem correria", hint: "4 a 5 atividades, com tempo para respirar", icon: "walk", fx: { ritmo: "Moderado" } },
-      { id: "intenso", label: "Do café ao jantar, cada minuto conta", hint: "O máximo que o dia comportar", icon: "nav", fx: { ritmo: "Intenso" } },
+      { id: "tranquilo", label: "Poucas paradas, sem relógio", hint: "Até 3 atividades, com pausas longas", icon: "leaf", fx: { ritmo: "Tranquilo" } },
+      { id: "moderado", label: "Ver bastante, sem correria", hint: "4 a 5 atividades, com tempo para respirar", icon: "map", fx: { ritmo: "Moderado" } },
+      { id: "intenso", label: "Do café ao jantar, cada minuto conta", hint: "O máximo que o dia comportar", icon: "bolt", fx: { ritmo: "Intenso" } },
     ],
   },
   {
@@ -84,7 +84,7 @@ export const QUIZ: QuizQuestion[] = [
       { id: "tasca", label: "Na tasca barata e cheia de locais", icon: "coin", fx: { orc: "Econômico", int: ["experiências locais"] } },
       { id: "bairro", label: "No restaurante charmoso de bairro", icon: "fork", fx: { orc: "Intermediário" } },
       { id: "reserva", label: "Naquele com reserva disputada", icon: "star", fx: { orc: "Premium", int: ["gastronomia"] } },
-      { id: "degustacao", label: "No menu degustação com vista", icon: "spark", fx: { orc: "Luxo", int: ["luxo", "gastronomia"] } },
+      { id: "degustacao", label: "No menu degustação com vista", icon: "wine", fx: { orc: "Luxo", int: ["luxo", "gastronomia"] } },
     ],
   },
   {
@@ -96,7 +96,7 @@ export const QUIZ: QuizQuestion[] = [
     options: [
       { id: "pe", label: "Vou a pé, descobrindo as ruas", icon: "walk", fx: { mob: ["Caminhar"] } },
       { id: "metro", label: "Pego metrô, ônibus ou bonde", icon: "metro", fx: { mob: ["Transporte público"] } },
-      { id: "app", label: "Chamo um táxi ou aplicativo", icon: "car", fx: { mob: ["Táxi ou aplicativo"] } },
+      { id: "app", label: "Chamo um táxi ou aplicativo", icon: "phone", fx: { mob: ["Táxi ou aplicativo"] } },
       { id: "carro", label: "Alugo um carro", icon: "car", fx: { mob: ["Carro"] } },
     ],
   },
@@ -108,11 +108,11 @@ export const QUIZ: QuizQuestion[] = [
     min: 0,
     options: [
       { id: "filas", label: "Filas longas", icon: "late", fx: { evitar: ["Filas longas"] } },
-      { id: "turistico", label: "Lugares lotados de turistas", icon: "users", fx: { evitar: ["Lugares muito turísticos"] } },
+      { id: "turistico", label: "Lugares lotados de turistas", icon: "crowd", fx: { evitar: ["Lugares muito turísticos"] } },
       { id: "andar", label: "Andar demais", icon: "walk", fx: { evitar: ["Excesso de caminhada"] } },
       { id: "longe", label: "Deslocamentos longos", icon: "route", fx: { evitar: ["Longos deslocamentos"] } },
-      { id: "caro", label: "Atrações caras", icon: "coin", fx: { evitar: ["Atividades caras"] } },
-      { id: "madrugar", label: "Acordar muito cedo", icon: "clock", fx: { evitar: ["Acordar muito cedo"] } },
+      { id: "caro", label: "Atrações caras", icon: "ticket", fx: { evitar: ["Atividades caras"] } },
+      { id: "madrugar", label: "Acordar muito cedo", icon: "alarm", fx: { evitar: ["Acordar muito cedo"] } },
     ],
   },
 ];
@@ -146,10 +146,10 @@ export type Persona = { nome: string; desc: string; icon: IconName };
 
 const STYLES: { tags: string[]; persona: Persona }[] = [
   { tags: ["gastronomia", "experiências locais"], persona: { nome: "Rota dos Sabores", icon: "fork", desc: "Você conhece um lugar pela boca. Mercados, tascas e cafés de bairro vão ganhar espaço no seu roteiro." } },
-  { tags: ["história", "arquitetura", "museus", "cultura"], persona: { nome: "Rota da História", icon: "flag", desc: "Cada rua tem uma história e você quer ouvir todas. Monumentos, museus e bairros antigos vêm primeiro." } },
-  { tags: ["fotografia", "natureza", "praias", "esportes"], persona: { nome: "Rota das Paisagens", icon: "camera", desc: "Você viaja atrás de vistas. Mirantes, parques e o ar livre vão guiar seus dias." } },
-  { tags: ["vida noturna", "entretenimento"], persona: { nome: "Rota da Noite", icon: "star", desc: "Seu dia começa quando o sol se põe. Bares, shows e a vida noturna da cidade entram no roteiro." } },
-  { tags: ["compras", "luxo"], persona: { nome: "Rota das Vitrines", icon: "ticket", desc: "Você gosta de garimpar. Ruas de comércio, lojas de autor e boas experiências entram na lista." } },
+  { tags: ["história", "arquitetura", "museus", "cultura"], persona: { nome: "Rota da História", icon: "castle", desc: "Cada rua tem uma história e você quer ouvir todas. Monumentos, museus e bairros antigos vêm primeiro." } },
+  { tags: ["fotografia", "natureza", "praias", "esportes"], persona: { nome: "Rota das Paisagens", icon: "mountain", desc: "Você viaja atrás de vistas. Mirantes, parques e o ar livre vão guiar seus dias." } },
+  { tags: ["vida noturna", "entretenimento"], persona: { nome: "Rota da Noite", icon: "music", desc: "Seu dia começa quando o sol se põe. Bares, shows e a vida noturna da cidade entram no roteiro." } },
+  { tags: ["compras", "luxo"], persona: { nome: "Rota das Vitrines", icon: "bag", desc: "Você gosta de garimpar. Ruas de comércio, lojas de autor e boas experiências entram na lista." } },
 ];
 
 const RITMO_TXT: Record<Ritmo, string> = {
