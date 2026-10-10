@@ -220,8 +220,10 @@ a.li{color:inherit}
 .leaflet-control-attribution a{color:#8D95AD!important;text-decoration:none}
 
 /* campos de data/hora: no Safari do iPhone eles têm largura mínima própria e vazam da tela */
-input.input[type="date"],input.input[type="time"]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;text-align:left}
-input[type="date"]::-webkit-date-and-time-value,input[type="time"]::-webkit-date-and-time-value{text-align:left;margin:0}
+/* e o texto da data fica fora do centro: altura e linha fixas no campo e no texto interno */
+input.input[type="date"],input.input[type="time"]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;text-align:left;height:48px;line-height:46px;padding-top:0;padding-bottom:0;font-size:16px}
+input[type="date"]::-webkit-date-and-time-value,input[type="time"]::-webkit-date-and-time-value{text-align:left;margin:0;line-height:46px;min-height:46px}
+input[type="date"]::-webkit-datetime-edit,input[type="time"]::-webkit-datetime-edit{padding:0;line-height:46px}
 .two>*{min-width:0}
 
 /* busca de destinos da nova viagem (catálogo de cidades, países e estados) */
