@@ -163,9 +163,14 @@ export default function TripView(props: Props) {
               <h2>{trip.destino}</h2>
               <small>{shortRange(trip.inicio, trip.fim)} · Ponto Zero: {trip.hotel.nome}</small>
             </div>
-            <Link className="icon-btn" href={"/app/viagem/" + trip.id + "/modo-viagem"} title="Modo viagem"><Icon name="nav" /></Link>
-            <button className="icon-btn" title="Compartilhar" onClick={() => (trip.access === "owner" ? setSheet("share") : irTab("pessoas"))}><Icon name="share" /></button>
+            <button className="icon-btn" title="Compartilhar" aria-label="Compartilhar" onClick={() => (trip.access === "owner" ? setSheet("share") : irTab("pessoas"))}><Icon name="share" /></button>
           </div>
+          {/* Modo viagem no dia aberto no roteiro (antes era só um ícone de seta, pouco claro) */}
+          <Link className="iniciar-viagem" href={`/app/viagem/${trip.id}/modo-viagem?dia=${day}`}>
+            <span className="iv-ic"><Icon name="nav" /></span>
+            <span className="iv-t"><b>Iniciar viagem</b><small>Modo viagem do Dia {day + 1}: o que fazer agora, horários e trajetos</small></span>
+            <Icon name="right" />
+          </Link>
           <div className="ttabs">
             {tabs.map(([k, l]) => <button key={k} className={tab === k ? "on" : ""} onClick={() => irTab(k)}>{l}</button>)}
           </div>

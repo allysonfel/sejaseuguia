@@ -4,9 +4,9 @@ import { listTripsForUser, pickActiveTrip } from "@/lib/data";
 import ModoViagemPage from "../viagem/[id]/modo-viagem/page";
 
 // Aba "Modo viagem": mesma ideia do /app/roteiro, renderiza a viagem ativa sem redirect.
-export default async function ModoViagem() {
+export default async function ModoViagem({ searchParams }: { searchParams: Promise<{ dia?: string }> }) {
   const u = await requireTraveler();
   const t = pickActiveTrip(await listTripsForUser(u));
   if (!t) redirect("/app/nova-viagem");
-  return <ModoViagemPage params={Promise.resolve({ id: String(t.id) })} />;
+  return <ModoViagemPage params={Promise.resolve({ id: String(t.id) })} searchParams={searchParams} />;
 }

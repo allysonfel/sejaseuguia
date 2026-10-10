@@ -286,6 +286,12 @@ a.li:active,button.li:active,.ci:active{transform:scale(.985)}
 /* viagem: abas e dias entram pelo lado de onde a pessoa veio */
 .mv-fwd{animation:qzFwd .32s var(--suave) backwards}
 .mv-back{animation:qzBack .32s var(--suave) backwards}
+.iniciar-viagem{display:flex;align-items:center;gap:12px;margin-top:12px;padding:10px 14px 10px 10px;border-radius:16px;background:var(--sun);color:var(--sun-ink);box-shadow:0 4px 0 #D98E00;transition:transform .15s var(--mola),box-shadow .15s}
+.iniciar-viagem:active{transform:translateY(3px);box-shadow:0 1px 0 #D98E00}
+.iniciar-viagem .iv-ic{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.35)}
+.iniciar-viagem .iv-t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.iniciar-viagem .iv-t b{font-size:15.5px;font-weight:800}
+.trip-head .iniciar-viagem small{color:inherit;opacity:.78;font-size:12px}
 .ttabs button{position:relative;transition:color .2s}
 .ttabs button.on{animation:qzFade .2s}
 .day{transition:transform .15s var(--mola),background .2s,border-color .2s,color .2s}
@@ -312,6 +318,12 @@ a.li:active,button.li:active,.ci:active{transform:scale(.985)}
 .dia-fim h3{margin-top:8px;color:var(--sun);font-size:24px}
 .dia-fim .gui-contorno{stroke:#fff}
 .dia-fim .gui-sombra{fill:rgba(255,255,255,.12)}
+.tv-dia{gap:4px;color:var(--sun);font-weight:800;font-size:12.5px;margin-left:-6px}
+.tv-dia button{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:rgba(255,255,255,.08);color:#fff}
+.tv-dia button:disabled{opacity:.3}
+.tv-dia button .i{width:16px;height:16px}
+.tv-prox{display:grid;gap:8px;width:100%;margin-top:14px}
+.tv-prox-ver{background:rgba(255,255,255,.08);color:#fff}
 .festa-ponto{left:50%;top:40px;z-index:2}
 
 /* comemoração na tela toda (fica por cima de tudo, sem pegar toque) */

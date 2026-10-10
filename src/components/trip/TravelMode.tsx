@@ -36,16 +36,29 @@ type Props = {
   profile: Profile;
   rules: Rules;
   live: boolean;
+  /** Dia de hoje (viagem em andamento) ou 0. */
   dayIdx: number;
-  note: string | null;
+  /** Dia aberto ao entrar (?dia=N), por padrão o de hoje. */
+  inicial: number;
+  status: string;
+  faltam: number;
   center: { lat: number; lng: number };
 };
 
-export default function TravelMode({ trip, pois, profile, rules, live, dayIdx, note, center }: Props) {
+export default function TravelMode({ trip, pois, profile, rules, live: viagemAoVivo, dayIdx, inicial, status, faltam, center }: Props) {
   const canEdit = trip.access !== "viewer";
   const ed = useTripEditor(trip.id, trip.days, trip.version, canEdit);
   const ctx = useMemo<Ctx>(() => ({ pois, hotel: trip.hotel, profile, rules, inicio: trip.inicio }), [pois, trip.hotel, profile, rules, trip.inicio]);
-  const idx = Math.min(dayIdx, ed.days.length - 1);
+  const ultimo = ed.days.length - 1;
+  const [dia, setDia] = useState(inicial);
+  const idx = Math.max(0, Math.min(dia, ultimo));
+  // relógio ao vivo só no dia de hoje; outro dia aberto mostra os horários planejados
+  const live = viagemAoVivo && idx === dayIdx;
+  const note =
+    status === "Planejada" ? `A viagem começa em ${faltam} ${faltam === 1 ? "dia" : "dias"}. Esta é uma prévia de como o Dia ${idx + 1} vai funcionar.` :
+    status === "Encerrada" ? `Esta viagem já terminou. Você está revendo o Dia ${idx + 1}.` :
+    idx > dayIdx ? `Você adiantou o Dia ${idx + 1}. Hoje é o Dia ${dayIdx + 1}.` :
+    idx < dayIdx ? `Você está revendo o Dia ${idx + 1}. Hoje é o Dia ${dayIdx + 1}.` : null;
   const d = useMemo(() => sched(ed.days[idx], idx, ctx), [ed.days, idx, ctx]);
   const [banner, setBanner] = useState<string | null>(null);
   const [weather, setWeather] = useState<Weather | null>(null);
@@ -94,6 +107,19 @@ export default function TravelMode({ trip, pois, profile, rules, live, dayIdx, n
   const prog = cur ? (live && nowMin != null ? Math.min(1, Math.max(0, (nowMin - cur.ini) / (cur.fim - cur.ini))) : 0.4) : 0;
   const hasOutdoor = d.items.some((it) => !it.done && !it.poi.indoor && !it.fixed);
 
+  // Troca o dia sem recarregar; o ?dia= na URL mantém o dia aberto se recarregar a página.
+  function irPara(n: number) {
+    if (n < 0 || n > ultimo || n === idx) return;
+    setDia(n);
+    setFeitas(0);
+    setFesta(false);
+    setBanner(null);
+    const u = new URL(window.location.href);
+    if (n === dayIdx) u.searchParams.delete("dia"); else u.searchParams.set("dia", String(n));
+    window.history.replaceState(null, "", u);
+    window.scrollTo({ top: 0 });
+  }
+
   function markDone() {
     if (k < 0) return;
     const next = JSON.parse(JSON.stringify(ed.days));
@@ -119,13 +145,30 @@ export default function TravelMode({ trip, pois, profile, rules, live, dayIdx, n
     setBanner(r.msg);
   }
 
+  // Fim do dia (ou dia livre): seguir para o próximo dia ou ver o roteiro dos próximos dias.
+  const proximos = idx < ultimo ? (
+    <div className="tv-prox">
+      <button className="btn btn-sun btn-block" onClick={() => irPara(idx + 1)}>Começar o Dia {idx + 2}<Icon name="right" /></button>
+      <Link className="btn btn-block tv-prox-ver" href={`/app/viagem/${trip.id}?dia=${idx + 1}`}><Icon name="map" />Ver os próximos dias</Link>
+    </div>
+  ) : (
+    <div className="tv-prox">
+      <p style={{ color: "#B7C0DA" }}>Este era o último dia da viagem.</p>
+      <Link className="btn btn-block tv-prox-ver" href={`/app/viagem/${trip.id}`}><Icon name="map" />Ver o roteiro completo</Link>
+    </div>
+  );
+
   return (
     <>
       <div className="a-body">
         <div className="tv">
           <div className="between">
             <div>
-              <div style={{ color: "var(--sun)", fontWeight: 800, fontSize: 12.5 }}>Modo viagem · Dia {idx + 1}</div>
+              <div className="row tv-dia">
+                <button onClick={() => irPara(idx - 1)} disabled={idx === 0} aria-label="Dia anterior"><Icon name="back" /></button>
+                <span>Modo viagem · Dia {idx + 1} de {ultimo + 1}</span>
+                <button onClick={() => irPara(idx + 1)} disabled={idx === ultimo} aria-label="Próximo dia"><Icon name="right" /></button>
+              </div>
               <h2 style={{ fontSize: 26, fontWeight: 600 }}>{trip.destino}, {d.label.split(", ")[1]}</h2>
             </div>
             <div style={{ textAlign: "right" }}>
@@ -134,7 +177,7 @@ export default function TravelMode({ trip, pois, profile, rules, live, dayIdx, n
             </div>
           </div>
           {note && <div className="viewing">{note}</div>}
-          {weather?.rainSoon && hasOutdoor && canEdit && rules.chuva && (
+          {weather?.rainSoon && hasOutdoor && canEdit && rules.chuva && (live || !viagemAoVivo) && (
             <div className="banner" style={{ margin: "14px 0 0" }}>
               <Icon name="rain" />
               <div style={{ flex: 1 }}>
@@ -150,12 +193,19 @@ export default function TravelMode({ trip, pois, profile, rules, live, dayIdx, n
             </div>
           )}
 
-          {d.items.length === 0 && <div className="now" style={{ marginTop: 18 }}><h3>Dia livre</h3><p style={{ color: "#B7C0DA", marginTop: 6 }}>Nada marcado para hoje. Aproveite ou peça sugestões ao assistente.</p></div>}
+          {d.items.length === 0 && (
+            <div className="now" style={{ marginTop: 18 }}>
+              <h3>Dia livre</h3>
+              <p style={{ color: "#B7C0DA", marginTop: 6 }}>Nada marcado para este dia. Aproveite ou peça sugestões ao assistente.</p>
+              {proximos}
+            </div>
+          )}
           {allDone && (
             <div className="now dia-fim" style={{ marginTop: 18 }}>
               <Gui humor={festa ? "festa" : "feliz"} size={festa ? 84 : 64} />
               <h3>Dia concluído!</h3>
               <p style={{ color: "#B7C0DA", marginTop: 6 }}>{d.items.length} {d.items.length === 1 ? "atividade feita" : "atividades feitas"}. Volta ao hotel: {d.back.min} min {d.back.modo}.</p>
+              {proximos}
             </div>
           )}
 
@@ -210,7 +260,7 @@ export default function TravelMode({ trip, pois, profile, rules, live, dayIdx, n
           )}
           {d.items.length > 0 && (
             <>
-              <div className="lbl">HOJE</div>
+              <div className="lbl">{viagemAoVivo && idx !== dayIdx ? "NESTE DIA" : "HOJE"}</div>
               <div className="today">
                 {d.items.map((it, i) => (
                   <div key={i} className={"it " + (it.done ? "done" : i === k ? "cur" : "") + (feitas && it.done && (i === k - 1 || (k < 0 && i === d.items.length - 1)) ? " agora" : "")}>

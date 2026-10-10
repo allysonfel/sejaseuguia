@@ -5,7 +5,7 @@ import { getDestination, getRules, getTripForUser, poisForTrip, tripStatus } fro
 import { daysBetween, todayIso } from "@/lib/format";
 import { DEFAULT_PROFILE } from "@/lib/types";
 
-export default async function ModoViagemPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ModoViagemPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ dia?: string }> }) {
   const u = await requireTraveler();
   const trip = await getTripForUser(Number((await params).id), u);
   if (!trip) notFound();
@@ -13,6 +13,10 @@ export default async function ModoViagemPage({ params }: { params: Promise<{ id:
   const [pois, rules, dest] = await Promise.all([poisForTrip(trip), getRules(), getDestination(trip.destinationId)]);
   const today = todayIso();
   const status = tripStatus(trip, today);
+  const hoje = status === "Em andamento" ? daysBetween(trip.inicio, today) : 0;
+  // ?dia=N: dia aberto pelo viajante (ver ou adiantar outro dia); sem ele, o dia de hoje
+  const pedido = Number((await searchParams)?.dia);
+  const inicial = Number.isInteger(pedido) && pedido >= 0 && pedido < trip.days.length ? pedido : hoje;
   return (
     <TravelMode
       key={trip.version}
@@ -21,11 +25,10 @@ export default async function ModoViagemPage({ params }: { params: Promise<{ id:
       profile={owner?.profile ?? DEFAULT_PROFILE}
       rules={rules}
       live={status === "Em andamento"}
-      dayIdx={status === "Em andamento" ? daysBetween(trip.inicio, today) : 0}
-      note={
-        status === "Planejada" ? "A viagem começa em " + daysBetween(today, trip.inicio) + " dias. Esta é uma prévia de como o Dia 1 vai funcionar." :
-        status === "Encerrada" ? "Esta viagem já terminou. Você está revendo o Dia 1." : null
-      }
+      dayIdx={hoje}
+      inicial={inicial}
+      status={status}
+      faltam={status === "Planejada" ? daysBetween(today, trip.inicio) : 0}
       center={dest ?? trip.hotel}
     />
   );
