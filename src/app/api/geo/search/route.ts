@@ -5,6 +5,7 @@ import { appUrl } from "@/lib/mail";
 // Busca de endereço/hotel com dados do OpenStreetMap, gratuita.
 // 1º Nominatim (passa pelo servidor para mandar o User-Agent exigido pela política de uso deles);
 // se ele recusar ou demorar (limita IP compartilhado, como o do Railway), 2º Photon (komoot).
+// Enquanto digita (auto=1) vai só no Photon: a política do Nominatim proíbe autocompletar.
 // Resultado guardado 1 h em memória: a mesma busca não bate de novo nos serviços.
 
 type Hit = { nome: string; endereco: string; lat: number; lng: number };
@@ -62,11 +63,13 @@ export async function GET(req: Request) {
   const lat = Number(u.searchParams.get("lat")), lng = Number(u.searchParams.get("lng"));
   const caixa: Caixa = Number.isFinite(lat) && Number.isFinite(lng) && (lat || lng) ? { lat, lng } : null;
 
-  const chave = q.toLowerCase() + "|" + (caixa ? caixa.lat.toFixed(2) + "," + caixa.lng.toFixed(2) : "");
+  const auto = u.searchParams.get("auto") === "1";
+  const chave = (auto ? "a|" : "") + q.toLowerCase() + "|" + (caixa ? caixa.lat.toFixed(2) + "," + caixa.lng.toFixed(2) : "");
   const salvo = cache.get(chave);
   if (salvo && Date.now() - salvo.em < CACHE_MS) return ok({ results: salvo.results });
 
-  for (const [nome, fonte] of [["Nominatim", nominatim], ["Photon", photon]] as const) {
+  const fontes = auto ? ([["Photon", photon]] as const) : ([["Nominatim", nominatim], ["Photon", photon]] as const);
+  for (const [nome, fonte] of fontes) {
     try {
       const results = await fonte(q, caixa);
       // Nominatim sem nada (busca por nome aproximado de hotel): o Photon costuma achar

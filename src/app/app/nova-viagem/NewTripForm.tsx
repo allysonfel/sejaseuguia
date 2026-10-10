@@ -49,6 +49,7 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
   const [hotel, setHotel] = useState<{ lat: number; lng: number } | null>(null);
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const hotelBusca = useRef(0);
   const [pax, setPax] = useState(2);
   const [pois, setPois] = useState<Poi[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -132,23 +133,36 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
     if (res && id === buscaId.current) setAchados({ regioes: [], cidades: res.cidades, titulo: (r.tipo === "estado" ? "Cidades em " : "Destinos em ") + r.nome });
   }
 
-  async function search() {
-    if (!dest || hotelNome.trim().length < 3) return;
+  // Busca da hospedagem: enquanto digita (auto, sem aviso de erro) ou no Enter/botão.
+  async function search(auto = false, texto = hotelNome) {
+    const txt = texto.trim();
+    if (!dest || txt.length < 3) return;
+    const id = ++hotelBusca.current;
     setSearching(true);
-    setHits(null);
+    if (!auto) setHits(null);
     try {
-      const r = await api<{ results: Hit[] }>(`/api/geo/search?q=${encodeURIComponent(hotelNome + " " + dest.nome)}&lat=${dest.lat}&lng=${dest.lng}`);
+      const r = await api<{ results: Hit[] }>(`/api/geo/search?q=${encodeURIComponent(txt + " " + dest.nome)}&lat=${dest.lat}&lng=${dest.lng}${auto ? "&auto=1" : ""}`);
+      if (id !== hotelBusca.current) return;
       setHits(r.results);
-      if (r.results.length === 1) choose(r.results[0]);
+      if (!auto && r.results.length === 1) choose(r.results[0]);
     } catch (e) {
-      toast((e as Error).message);
+      if (id === hotelBusca.current && !auto) toast((e as Error).message);
     }
-    setSearching(false);
+    if (id === hotelBusca.current) setSearching(false);
+  }
+  // Mostra as opções enquanto digita (espera 400 ms parado para não buscar a cada letra).
+  function digitarHotel(txt: string) {
+    setHotelNome(txt);
+    const id = ++hotelBusca.current;
+    if (txt.trim().length < 3) { setSearching(false); return setHits(null); }
+    setTimeout(() => { if (id === hotelBusca.current) search(true, txt); }, 400);
   }
   function choose(h: Hit) {
     setHotel({ lat: h.lat, lng: h.lng });
     if (!hotelNome.trim() || hotelNome.trim().length < h.nome.length) setHotelNome(h.nome);
     setHits(null);
+    hotelBusca.current++;
+    setSearching(false);
   }
 
   // quantos lugares do perfil ficam a até 20 min do hotel
@@ -291,12 +305,12 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
         <div className="field">
           <label>Hospedagem, o Ponto Zero da viagem</label>
           <div className="row" style={{ gap: 8 }}>
-            <input className="input" value={hotelNome} placeholder="Nome do hotel ou endereço" onChange={(e) => setHotelNome(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search()} />
-            <button className="btn btn-navy" style={{ height: 48 }} onClick={search} disabled={searching || hotelNome.trim().length < 3} aria-label="Buscar hospedagem" aria-busy={searching}>
+            <input className="input" value={hotelNome} placeholder="Nome do hotel ou endereço" onChange={(e) => digitarHotel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search()} autoComplete="off" aria-busy={searching} />
+            <button className="btn btn-navy" style={{ height: 48 }} onClick={() => search()} disabled={searching || hotelNome.trim().length < 3} aria-label="Buscar hospedagem" aria-busy={searching}>
               {searching ? <span className="spin spin-ok spin-claro" aria-hidden /> : <Icon name="search" />}
             </button>
           </div>
-          {searching && (
+          {searching && !hits && (
             <div className="box dest-busca buscando" role="status" style={{ marginTop: 8 }}>
               <div className="busca-t"><span className="spin spin-ok" aria-hidden />Procurando “{hotelNome.trim()}” em {dest.nome}…</div>
               {[0, 1].map((i) => <div key={i} className="near esqueleto" aria-hidden><span className="li-ic" /><span className="li-m"><b /><small /></span></div>)}
