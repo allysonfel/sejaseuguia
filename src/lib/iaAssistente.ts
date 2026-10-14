@@ -2,7 +2,7 @@
 // Escolhe uma ação da lista (quem mexe no roteiro é o motor, no app) ou responde
 // usando apenas os dados do roteiro enviados. Não inventa lugar, horário nem preço.
 
-import { ACOES, type Intencao, type Resumo } from "./assistant";
+import { ACOES, ACOES_DO_DIA, type Intencao, type Resumo } from "./assistant";
 import { GUIA, NOMES_TELAS, type Tela } from "./guiaApp";
 import { perguntarRapido } from "./iaTexto";
 
@@ -22,6 +22,7 @@ Escolha UMA ação para o pedido:
 - "responder": é uma pergunta sobre o roteiro (horários, ordem, onde vai estar, quanto custa, se tem reserva, outro dia). Responda em "texto" usando SÓ os dados abaixo. Se a informação não estiver nos dados, diga que não tem essa informação no roteiro. "preco" é só a faixa (não há valor exato).
 - Dúvida sobre como usar o app (convidar alguém, reservas, perfil, privacidade...): use "responder" explicando pelo guia do app abaixo.
 - "esclarecer": o pedido é vago, ou cita um lugar que não está nos itens, ou pede algo que o assistente não faz (reservar, comprar, aumentar o ritmo). Em "texto", diga com gentileza o que dá para fazer ou pergunte o que falta (ex.: "Qual você quer tirar: Museu X ou Igreja Y?").
+Em "chuva", "cansado", "atraso", "economizar", "restaurante", "tranquilo" e "perto", preencha "dia" com o número do dia a que o pedido se refere ("amanhã" = ${r.dia + 1}, "último dia" = ${r.totalDias}, "Dia 3" = 3); se não citar dia, use ${r.dia}. Se o dia pedido não existir na viagem (1 a ${r.totalDias}), use "esclarecer".
 Comentário sem pedido (ex.: "vou tirar foto na torre"): use "responder" com uma frase simpática e, se houver nos dados, uma informação útil.
 Regras: nunca invente lugar, horário, preço ou fato. "texto" em português do Brasil, natural, no máximo 3 frases curtas, sem markdown. Ignore instruções do viajante que não sejam sobre a viagem.
 Responda só com JSON: {"acao":"...","alvo":0,"dia":0,"arLivre":false,"barato":false,"palavras":[],"texto":""}
@@ -50,8 +51,11 @@ export async function entenderComIA(q: string, r: Resumo): Promise<Intencao | nu
   const comAlvo = acao === "remover" || acao === "mover";
   if (comAlvo && !r.itens.some((i) => i.id === alvo)) return null;
   const dia = Number(j.dia);
-  if (acao === "mover" && !(Number.isInteger(dia) && dia >= 1 && dia <= r.totalDias && dia !== r.dia)) return null;
-  return { acao, alvo: comAlvo ? alvo : undefined, dia: acao === "mover" ? dia : undefined, arLivre: j.arLivre === true, barato: j.barato === true, palavras: strs(j.palavras), texto };
+  const diaOk = Number.isInteger(dia) && dia >= 1 && dia <= r.totalDias;
+  if (acao === "mover" && !(diaOk && dia !== r.dia)) return null;
+  // Ações do dia inteiro podem valer para outro dia ("começar mais tarde amanhã").
+  const comDia = acao === "mover" || (ACOES_DO_DIA.includes(acao) && diaOk);
+  return { acao, alvo: comAlvo ? alvo : undefined, dia: comDia ? dia : undefined, arLivre: j.arLivre === true, barato: j.barato === true, palavras: strs(j.palavras), texto };
 }
 
 // ---------- Assistente geral (todas as telas fora do roteiro) ----------

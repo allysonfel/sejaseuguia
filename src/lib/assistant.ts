@@ -21,12 +21,14 @@ export type Reply = {
 
 export const ACOES = ["chuva", "cansado", "atraso", "economizar", "restaurante", "tranquilo", "remover", "mover", "perto", "ajuda", "responder", "esclarecer"] as const;
 export type Acao = (typeof ACOES)[number];
+/** Ações que valem para um dia inteiro e podem mirar outro dia que não o aberto. */
+export const ACOES_DO_DIA: readonly Acao[] = ["chuva", "cansado", "atraso", "economizar", "restaurante", "tranquilo", "perto"];
 
 export type Intencao = {
   acao: Acao;
   /** id do lugar do dia (remover, mover) */
   alvo?: number;
-  /** dia de destino, começando em 1 (mover) */
+  /** dia de destino (mover) ou dia a ajustar (ACOES_DO_DIA), começando em 1 */
   dia?: number;
   /** trocar por algo ao ar livre (remover) */
   arLivre?: boolean;
@@ -82,7 +84,9 @@ const GENERICAS = new Set([
 // Pergunta de informação ("que horas abre o restaurante?") não é pedido de mudança: vai para a IA responder.
 const PERGUNTA = ["que horas", "quanto tempo", "quanto custa", "quanto e", "qual o horario", "qual horario", "horario", "abre", "fecha", "aberto", "aberta", "como chego", "como chegar", "onde fica", "quando", "qual a distancia", "longe"];
 // Pedido contrário ao que as regras fazem ("aumente o ritmo") ou fora delas ("passe para amanhã").
-const FORA = ["aument*", "acelera*", "intens*", "mais atividade*", "mais coisa*", "outro dia", "amanha", "ontem", "de dia", "adiant*"];
+const FORA = ["aument*", "acelera*", "intens*", "mais atividade*", "mais coisa*", "outro dia", "amanha", "ontem", "de dia", "adiant*", "ultimo dia", "primeiro dia", "proximo dia"];
+// Pedido para um dia específico ("no Dia 3"): a IA descobre qual e se ele existe.
+const DIA_N = /\bdia \d+\b/;
 
 const OUTDOOR = ["ar livre", "ao ar livre", "natureza", "parque*", "praia*", "jardim", "jardins", "trilha*", "mirante*"];
 
@@ -140,7 +144,7 @@ export function entender(qRaw: string, day: DayPlan, ctx: Ctx): Intencao | null 
   const negado = /\b(nao|nem|nunca)\b/.test(q) && !casa(q, ["nao quero ir", "nao quero mais"]);
 
   if (!achadas.length) return SAUDACAO.some((s) => q === s || q.startsWith(s + " ")) && palavrasDe(q).length <= 5 ? { acao: "ajuda" } : null;
-  if (negado || casa(q, PERGUNTA) || casa(q, FORA)) return null;
+  if (negado || casa(q, PERGUNTA) || casa(q, FORA) || DIA_N.test(q)) return null;
 
   let acao: keyof typeof TERMOS;
   if (fortes.length === 0) acao = "perto";
@@ -180,6 +184,9 @@ const casaEtiqueta = (p: Poi, palavras: string[]) => {
 
 /** Executa a ação já entendida (pelas regras ou pela IA). */
 export function executar(it: Intencao, days: DayPlan[], idx: number, ctx: Ctx, moeda: string): Reply {
+  // "Começar mais tarde amanhã": a ação do dia vai para o dia pedido, não para o aberto.
+  const outroDia = ACOES_DO_DIA.includes(it.acao) && it.dia != null && it.dia - 1 !== idx && it.dia >= 1 && it.dia <= days.length;
+  if (outroDia) idx = it.dia! - 1;
   const day = days[idx];
   const dn = "Dia " + (idx + 1);
   const palavras = (it.palavras ?? []).map((w) => limpa(w)).filter((w) => w.length > 2);
@@ -192,11 +199,11 @@ export function executar(it: Intencao, days: DayPlan[], idx: number, ctx: Ctx, m
     }
     case "cansado": {
       const r = tiredAdj(days, idx, ctx);
-      return { t: "Entendido. " + r.msg, apply: "Diminuir o ritmo", preview: r.days, kind: "tired" };
+      return { t: "Entendido. " + (outroDia ? "No " + dn + ": " + r.msg.charAt(0).toLowerCase() + r.msg.slice(1) : r.msg), apply: outroDia ? "Diminuir o ritmo do " + dn : "Diminuir o ritmo", preview: r.days, kind: "tired" };
     }
     case "atraso": {
       const r = lateAdj(days, idx, ctx);
-      return { t: r.msg, apply: "Reorganizar o dia", preview: r.days, kind: "late" };
+      return { t: (outroDia ? "No " + dn + ": " + r.msg.charAt(0).toLowerCase() + r.msg.slice(1) : r.msg), apply: outroDia ? "Reorganizar o " + dn : "Reorganizar o dia", preview: r.days, kind: "late" };
     }
     case "economizar": {
       const r = saveAdj(days, idx, ctx);
