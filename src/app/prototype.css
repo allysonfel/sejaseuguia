@@ -282,6 +282,12 @@ h1,h2,h3{font-family:var(--serif);font-weight:700;letter-spacing:-.01em;line-hei
 .carry .cb{width:22px;height:22px;border-radius:7px;border:1.5px solid #C5CCDD;display:grid;place-items:center;color:#fff;flex:none}
 .carry .cb.on{background:var(--navy);border-color:var(--navy)}
 .carry .cb svg{width:14px;height:14px;stroke-width:3}
+.carry .feito{display:flex;gap:6px;flex:none}
+.carry .feito button{width:38px;height:38px;border-radius:12px;border:1.5px solid #C5CCDD;background:#fff;color:var(--faint);display:grid;place-items:center;transition:transform .15s}
+.carry .feito button:active{transform:scale(.92)}
+.carry .feito svg{width:17px;height:17px;stroke-width:2.6}
+.carry .feito .on.sim{background:var(--sea-ink);border-color:var(--sea-ink);color:#fff}
+.carry .feito .on.nao{background:var(--coral,#E5533D);border-color:var(--coral,#E5533D);color:#fff}
 /* reconhecimento por foto */
 .pv{position:absolute;inset:0;z-index:39;background:#05080F;color:#fff;display:flex;flex-direction:column;animation:fade .2s}
 .pv .shot{position:relative;flex:1;overflow:hidden}
@@ -409,6 +415,16 @@ h1,h2,h3{font-family:var(--serif);font-weight:700;letter-spacing:-.01em;line-hei
 .sheet-bg{position:absolute;inset:0;background:rgba(16,27,59,.4);z-index:40;animation:fade .2s}
 .sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;z-index:41;max-height:88%;overflow:auto;animation:up .25s cubic-bezier(.2,.9,.3,1);padding:0 18px 20px}
 .sheet .grab{width:40px;height:4px;border-radius:4px;background:var(--line);margin:10px auto 12px}
+.sheet.previa{padding-bottom:0}
+.sheet.previa h3{font-size:22px;margin-bottom:4px}
+.sheet.previa>p{font-size:13px;margin-bottom:6px}
+.previa-dia{font-weight:800;font-size:13px;color:var(--navy3);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+.previa-it{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.previa-it b{display:block;font-size:14.5px}
+.previa-it small{color:var(--muted);font-size:12px}
+.previa-it.fora b{text-decoration:line-through;color:var(--faint)}
+.previa-x{width:36px;height:36px;padding:0;border-radius:12px;background:var(--bg);color:var(--muted);flex:none}
+.previa-pe{position:sticky;bottom:0;background:#fff;padding:12px 0 18px;margin-top:6px;display:grid;gap:8px;box-shadow:0 -10px 14px -10px rgba(16,27,59,.12)}
 @keyframes up{from{transform:translateY(40px);opacity:.4}}
 @keyframes fade{from{opacity:0}}
 .toggle{width:44px;height:26px;border-radius:99px;background:#CBD2E2;position:relative;flex:none;transition:.2s}

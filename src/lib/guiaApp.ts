@@ -29,9 +29,9 @@ export function telaDoCaminho(path: string) {
 }
 
 export const GUIA = `Telas do app Seja Seu Guia (da agência Lux Viagens e Turismo):
-- Início: viagem atual com contagem regressiva, próximos compromissos (reservas), outras viagens, avisos no sino.
-- Planejar nova viagem: escolhe destino, datas e hotel; o app monta o roteiro dia a dia sozinho, de acordo com o perfil de viajante. Botão "Montar meu roteiro".
-- Roteiro: dias da viagem com horários, trajetos e tempo entre lugares. Abas Roteiro, Mapa, Reservas e Pessoas. Dá para trocar, tirar, adiantar ou mover atividades, e marcar como feito. O botão roxo do assistente, nessa tela, ajusta o dia (chuva, cansaço, atraso, restaurante, economizar).
+- Início: "Planejar nova viagem" no topo; "Meus roteiros" com abas Atuais, Futuros e Realizados (viagem da vez com contagem regressiva); próximos compromissos (reservas); avisos no sino.
+- Planejar nova viagem: escolhe destino, datas e hotel; o app monta o roteiro dia a dia sozinho, de acordo com o perfil de viajante. Botão "Montar meu roteiro" mostra antes as atrações escolhidas, separadas por dia, e dá para tirar as que não quer (por exemplo, quem já conhece o destino); o app coloca outras no lugar quando couber.
+- Roteiro: dias da viagem com horários, trajetos e tempo entre lugares. Abas Roteiro, Mapa, Reservas e Pessoas. Dá para trocar, tirar, adiantar ou mover atividades. Cada trecho tem botões a pé, carro, ônibus e trem que abrem o Google Maps saindo de onde a pessoa está. No "Fim do dia", marca cada atração como realizada ou não realizada, e as não realizadas podem ir para o dia seguinte. O botão roxo do assistente, nessa tela, ajusta o dia (chuva, cansaço, atraso, restaurante, economizar).
 - Reservas (aba do Roteiro): guardar voo, hotel, transfer, restaurante, passeio ou ingresso, aluguel de carro e seguro, com código ou localizador. Reserva ligada a um lugar fixa o horário dele no roteiro.
 - Pessoas (aba do Roteiro): "Convidar pessoa" por e-mail (entra com o próprio e-mail e vê o roteiro sempre atualizado) e link do roteiro (quem tem o link pode ver; dá para esconder as reservas no link). Só quem organiza a viagem muda essas opções.
 - Modo viagem (botão do meio, embaixo): durante a viagem mostra o que fazer agora e a próxima parada, botão para navegar até lá, "Fiquei mais tempo" e aviso de chuva que reorganiza o resto do dia.

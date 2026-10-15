@@ -6,9 +6,15 @@ import { generate, haversineKm } from "@/lib/engine";
 import { daysBetween } from "@/lib/format";
 import { newSlug, userRatings } from "@/lib/tripOps";
 
-type Body = { destinationId: number; inicio: string; fim: string; pax: number; hotel: { nome: string; lat: number; lng: number } };
+type Body = {
+  destinationId: number; inicio: string; fim: string; pax: number; hotel: { nome: string; lat: number; lng: number };
+  /** só devolve as atrações que entrariam, sem criar a viagem */
+  previa?: boolean;
+  /** atrações que a pessoa tirou na prévia (ex.: já conhece o destino) */
+  excluir?: number[];
+};
 
-// Cria a viagem e já monta o roteiro com o motor.
+// Cria a viagem e já monta o roteiro com o motor. Com `previa`, só mostra as atrações escolhidas.
 export async function POST(req: Request) {
   const u = await apiTraveler();
   if (!u) return fail("Entre de novo para continuar.", 401);
@@ -26,13 +32,23 @@ export async function POST(req: Request) {
   if (haversineKm(hotel, dest) > 80) return fail("A hospedagem marcada está longe de " + dest.nome + ". Confira o lugar no mapa.");
   const pax = Math.min(20, Math.max(1, Math.round(Number(b.pax) || 1)));
 
-  const pois = await listPois(dest.id, { forEngine: true });
+  const excluir = new Set(Array.isArray(b.excluir) ? b.excluir.slice(0, 500).map(Number).filter(Number.isInteger) : []);
+  const pois = (await listPois(dest.id, { forEngine: true })).filter((p) => !excluir.has(p.id));
+  if (pois.length < 3 && excluir.size) return fail("Sobraram poucas atrações em " + dest.nome + ". Deixe pelo menos 3 no roteiro.");
   if (pois.length < 3) return fail(dest.nome + " ainda tem poucos lugares cadastrados para montar um roteiro.");
   const ctx = {
     pois: Object.fromEntries(pois.map((p) => [p.id, p])),
     hotel, profile: u.profile ?? DEFAULT_PROFILE, rules: await getRules(), inicio,
   };
   const g = generate({ ctx, nDays: n, forced: [], lastDayEnd: null, ratings: await userRatings(u) });
+
+  if (b.previa) {
+    // Só as atrações (refeições o app escolhe sozinho), na ordem dos dias.
+    const atracoes = g.days.flatMap((d, i) =>
+      d.items.map((it) => ctx.pois[it.p]).filter((p) => p && !p.meal).map((p) => ({ id: p.id, nome: p.nome, cat: p.cat, bairro: p.bairro, dur: p.dur, dia: i + 1 })),
+    );
+    return ok({ atracoes });
+  }
 
   await ensureSchema();
   const [{ id }] = await sql<{ id: number }[]>`

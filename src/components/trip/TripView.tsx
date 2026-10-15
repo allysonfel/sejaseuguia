@@ -6,7 +6,7 @@ import Icon from "@/components/Icon";
 import Gui from "@/components/quiz/Gui";
 import TabBar from "@/components/TabBar";
 import {
-  addPoi, carryOver, carryPending, fillGap, lateAdj, moveItem, rainSwap, removeAt, saveAdj, schedAll, tiredAdj,
+  addPoi, carryOver, fillGap, lateAdj, moveItem, rainSwap, removeAt, saveAdj, schedAll, tiredAdj,
   type Ctx, type ReplanResult,
 } from "@/lib/engine";
 import { shortRange } from "@/lib/format";
@@ -58,7 +58,8 @@ export default function TripView(props: Props) {
   const [banner, setBanner] = useState<Banner | null>(props.initialBanner);
   const [open, setOpen] = useState<number | null>(null);
   const [alts, setAlts] = useState<number[] | null>(null);
-  const [carryOff, setCarryOff] = useState<Record<number, boolean>>({});
+  // Fim do dia: atrações que a pessoa marcou como não realizadas (por id do lugar)
+  const [nao, setNao] = useState<Record<number, boolean>>({});
   const [reservations, setReservations] = useState(props.reservations);
   const [members, setMembers] = useState(props.members);
   const [sheet, setSheet] = useState<null | "addres" | "share">(null);
@@ -138,12 +139,22 @@ export default function TripView(props: Props) {
       if (!r) return toast("Nada aberto por perto nesse intervalo");
       apply(r, "fill", "Tempo livre aproveitado");
     },
+    // Realizada fica salva no roteiro; não realizada fica marcada para poder ir ao dia seguinte.
+    feito(i: number, sim: boolean) {
+      const it = ed.days[day].items[i];
+      if (!!it.done !== sim) {
+        const next = JSON.parse(JSON.stringify(ed.days));
+        next[day].items[i].done = sim || undefined;
+        ed.commit(next, null);
+      }
+      setNao((n) => ({ ...n, [it.p]: !sim }));
+    },
     carry() {
-      const ids = carryPending(ed.days[day]).filter((k) => !carryOff[k]);
-      if (!ids.length) return toast("Marque ao menos uma atividade");
+      const ids = ed.days[day].items.filter((it) => nao[it.p] && !it.done && !it.fixed).map((it) => it.p);
+      if (!ids.length) return toast("Marque como não realizada o que quer levar");
       const r = carryOver(ed.days, day, ids, ctx);
       apply(r, "carry", "Levado para " + sdays[day + 1].label);
-      setCarryOff({});
+      setNao({});
       irDia(day + 1);
     },
   };
@@ -213,7 +224,7 @@ export default function TripView(props: Props) {
         {tab === "roteiro" && d && (
           <DayTimeline
             d={d} next={sdays[day + 1]} ctx={ctx} moeda={trip.moeda} canEdit={canEdit} open={open} setOpen={setOpen}
-            alts={alts} carryOff={carryOff} setCarryOff={setCarryOff} actions={actions}
+            alts={alts} nao={nao} actions={actions}
           />
         )}
         {tab === "mapa" && d && <MapTab d={d} hotel={trip.hotel} />}

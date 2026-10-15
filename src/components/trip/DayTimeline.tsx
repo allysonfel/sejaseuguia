@@ -1,7 +1,7 @@
 "use client";
 import { Fragment } from "react";
 import Icon from "@/components/Icon";
-import { carryPending, whyLines, type Ctx, type Leg, type SDay } from "@/lib/engine";
+import { whyLines, type Ctx, type Leg, type SDay } from "@/lib/engine";
 import { durTxt, hm, km1, priceTxt } from "@/lib/format";
 import { mapsLink } from "@/lib/client";
 import type { IconName } from "@/lib/icons";
@@ -44,6 +44,7 @@ type Actions = {
   remove: (i: number) => void;
   addAlt: (k: number) => void;
   fill: (i: number) => void;
+  feito: (i: number, sim: boolean) => void;
   carry: () => void;
 };
 
@@ -56,13 +57,13 @@ type Props = {
   open: number | null;
   setOpen: (v: number | null) => void;
   alts: number[] | null;
-  carryOff: Record<number, boolean>;
-  setCarryOff: (v: Record<number, boolean>) => void;
+  nao: Record<number, boolean>;
   actions: Actions;
 };
 
-export default function DayTimeline({ d, next, ctx, moeda, canEdit, open, setOpen, alts, carryOff, setCarryOff, actions }: Props) {
-  const pend = canEdit && next ? carryPending({ start: d.start, items: d.items }) : [];
+export default function DayTimeline({ d, next, ctx, moeda, canEdit, open, setOpen, alts, nao, actions }: Props) {
+  const feitas = d.items.filter((it) => it.done).length;
+  const levar = d.items.filter((it) => nao[it.p] && !it.done && !it.fixed).length;
   return (
     <div className={canEdit ? "" : "readonly"}>
       <div className="day-sum">
@@ -157,23 +158,32 @@ export default function DayTimeline({ d, next, ctx, moeda, canEdit, open, setOpe
         {d.endFixed && <div className="leg"><span /><div className="ln"><Icon name="plane" />Saída para o aeroporto às <b className="mono">{d.endFixed}</b></div></div>}
       </div>
 
-      {pend.length > 0 && next && (
+      {canEdit && d.items.length > 0 && (
         <div className="carry">
-          <div className="between"><h4>Fim do dia</h4><span className="badge b-sun">{pend.length} {pend.length === 1 ? "pode ficar" : "podem ficar"} para depois</span></div>
+          <div className="between"><h4>Fim do dia</h4><span className="badge b-sea">{feitas} de {d.items.length} {d.items.length === 1 ? "realizada" : "realizadas"}</span></div>
           <p className="muted" style={{ fontSize: 12.5, margin: "4px 0 8px" }}>
-            Não deu tempo de tudo? Leve o que ficou para o dia seguinte ({next.label}) e o motor reorganiza o dia a partir disso.
+            Marque cada atração como realizada ou não.{next ? " O que não deu para fazer pode ir para o dia seguinte (" + next.label + ") e o motor reorganiza os horários." : ""}
           </p>
-          {pend.map((k) => {
-            const it = d.items.find((x) => x.p === k)!;
-            const on = !carryOff[k];
+          {d.items.map((it, i) => {
+            const sim = !!it.done, naoFeita = !sim && !!nao[it.p];
             return (
-              <button key={k} className="ci" onClick={() => setCarryOff({ ...carryOff, [k]: on })}>
-                <span className={"cb " + (on ? "on" : "")}>{on && <Icon name="check" />}</span>
-                <span style={{ flex: 1 }}><b style={{ display: "block", fontSize: 14 }}>{it.poi.nome}</b><small className="muted">Previsto para {hm(it.ini)} · {it.dur ?? it.poi.dur} min</small></span>
-              </button>
+              <div key={i + ":" + it.p} className="ci">
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <b style={{ display: "block", fontSize: 14 }}>{it.poi.nome}</b>
+                  <small className="muted">Previsto para {hm(it.ini)} · {it.dur ?? it.poi.dur} min{naoFeita && it.fixed ? " · tem reserva, fica neste dia" : ""}</small>
+                </span>
+                <span className="feito">
+                  <button className={sim ? "on sim" : ""} onClick={() => actions.feito(i, true)} aria-pressed={sim} aria-label={"Realizada: " + it.poi.nome}><Icon name="check" /></button>
+                  <button className={naoFeita ? "on nao" : ""} onClick={() => actions.feito(i, false)} aria-pressed={naoFeita} aria-label={"Não realizada: " + it.poi.nome}><Icon name="close" /></button>
+                </span>
+              </div>
             );
           })}
-          <button className="btn btn-sun btn-block" style={{ marginTop: 10 }} onClick={actions.carry}><Icon name="refresh" />Levar para o dia seguinte</button>
+          {next && (
+            <button className="btn btn-sun btn-block" style={{ marginTop: 10 }} onClick={actions.carry} disabled={!levar}>
+              <Icon name="refresh" />{levar ? "Levar " + levar + (levar === 1 ? " não realizada" : " não realizadas") + " para o dia seguinte" : "Levar não realizadas para o dia seguinte"}
+            </button>
+          )}
         </div>
       )}
 

@@ -553,11 +553,6 @@ export function carryOver(days: DayPlan[], idx: number, poiIds: number[], ctx: C
   return { days: next, changed: true, msg: poiIds.map((k) => ctx.pois[k].nome).join(" e ") + " entrou no dia seguinte. O motor reorganizou os horários a partir disso." };
 }
 
-/** As últimas atividades sem reserva e não concluídas, candidatas a ir pro dia seguinte. */
-export function carryPending(day: DayPlan): number[] {
-  return day.items.filter((it) => !it.fixed && !it.done).slice(-2).map((it) => it.p);
-}
-
 /** Durante a viagem: ficou mais tempo; encurta uma visita longa depois pra compensar. */
 export function stayLonger(days: DayPlan[], idx: number, cur: number, ctx: Ctx): ReplanResult {
   const next = clone(days);

@@ -20,6 +20,7 @@ const LeafletMap = dynamic(() => import("@/components/LeafletMap"), { ssr: false
 type Hit = { nome: string; endereco: string; lat: number; lng: number };
 type Busca = { regioes: Regiao[]; cidades: DestinoBusca[]; titulo?: string };
 type Preparo = { status: ImportStatus | null; lugares: number; posicao: number };
+type Atracao = { id: number; nome: string; cat: string; bairro: string; dur: number; dia: number };
 
 // Etapas mostradas enquanto os lugares de um destino novo são importados (o servidor leva ~1 min).
 const ETAPAS_PREPARO: [number, string][] = [
@@ -55,6 +56,10 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
   const [err, setErr] = useState<string | null>(null);
   const [gen, setGen] = useState<number | null>(null);
   const [requested, setRequested] = useState(false);
+  // Prévia: atrações que o motor escolheu, para a pessoa tirar as que não quer antes de montar.
+  const [previa, setPrevia] = useState<Atracao[] | null>(null);
+  const [fora, setFora] = useState<Set<number>>(new Set());
+  const [carregandoPrevia, setCarregandoPrevia] = useState(false);
   // segundos desde que começou a preparar o destino (barra de progresso estimada)
   const [seg, setSeg] = useState(0);
   const preparoRef = useRef<HTMLDivElement>(null);
@@ -174,21 +179,51 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
 
   const nDays = daysBetween(ini, fim) + 1;
 
-  async function generate() {
+  const corpo = () => ({ destinationId: dest!.id, inicio: ini, fim, pax, hotel: { nome: hotelNome.trim(), ...hotel! } });
+
+  function validar(): boolean {
     setErr(null);
-    if (!dest) return setErr("Escolha um destino da lista.");
+    if (!dest) { setErr("Escolha um destino da lista."); return false; }
     if (!dest.pronto) {
       preparoRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return setErr(prep?.status === "falhou" ? "Ainda não temos os lugares de " + dest.nome + " para montar o roteiro." : "Ainda estamos preparando os lugares de " + dest.nome + ". Só mais alguns segundos.");
+      setErr(prep?.status === "falhou" ? "Ainda não temos os lugares de " + dest.nome + " para montar o roteiro." : "Ainda estamos preparando os lugares de " + dest.nome + ". Só mais alguns segundos.");
+      return false;
     }
-    if (!hotel) return setErr("Busque a hospedagem ou toque no mapa para marcar onde ela fica.");
+    if (!hotel) { setErr("Busque a hospedagem ou toque no mapa para marcar onde ela fica."); return false; }
+    return true;
+  }
+
+  // 1º passo: mostra as atrações escolhidas.
+  async function revisar() {
+    if (!validar()) return;
+    setCarregandoPrevia(true);
+    try {
+      const r = await api<{ atracoes: Atracao[] }>("/api/trips", { body: { ...corpo(), previa: true } });
+      setFora(new Set());
+      setPrevia(r.atracoes);
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+    setCarregandoPrevia(false);
+  }
+
+  function alternar(id: number) {
+    setFora((f) => {
+      const n = new Set(f);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }
+
+  // 2º passo: monta o roteiro sem as atrações tiradas.
+  async function generate() {
+    if (!validar()) return;
+    setPrevia(null);
     setGen(0);
     const steps = setInterval(() => setGen((k) => (k == null ? k : Math.min(k + 1, GEN.length - 1))), 380);
     try {
       const [r] = await Promise.all([
-        api<{ id: number; activities: number; saved: number; days: number }>("/api/trips", {
-          body: { destinationId: dest.id, inicio: ini, fim, pax, hotel: { nome: hotelNome.trim(), ...hotel } },
-        }),
+        api<{ id: number; activities: number; saved: number; days: number }>("/api/trips", { body: { ...corpo(), excluir: [...fora] } }),
         new Promise((ok) => setTimeout(ok, GEN.length * 380)),
       ]);
       clearInterval(steps);
@@ -371,11 +406,46 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
         Já tem voo, ingressos ou restaurante reservados? Depois de montar, adicione na aba Reservas: o roteiro se ajusta aos horários.
       </div>
       {err && <div className="err">{err}</div>}
-      <button className="btn btn-sun btn-block" style={{ marginTop: 6 }} onClick={generate} disabled={gen != null} aria-busy={!!dest && !dest.pronto && prep?.status !== "falhou"}>
+      <button className="btn btn-sun btn-block" style={{ marginTop: 6 }} onClick={revisar} disabled={gen != null || carregandoPrevia} aria-busy={!!dest && !dest.pronto && prep?.status !== "falhou"}>
         {dest && !dest.pronto && prep?.status !== "falhou"
           ? <><span className="spin spin-ok" aria-hidden />Preparando os lugares de {dest.nome}…</>
+          : carregandoPrevia ? <><span className="spin spin-ok" aria-hidden />Escolhendo as atrações…</>
           : <><Icon name="route" />Montar meu roteiro</>}
       </button>
+
+      {previa && createPortal(
+        <>
+          <div className="sheet-bg" onClick={() => setPrevia(null)} />
+          <div className="sheet previa" role="dialog" aria-label="Confira as atrações">
+            <div className="grab" />
+            <h3 className="serif">Confira as atrações</h3>
+            <p className="muted">Já conhece algum lugar ou não quer ir? Tire da lista. O app coloca outra atração no lugar quando couber. Restaurantes e cafés entram sozinhos.</p>
+            {[...new Set(previa.map((a) => a.dia))].map((dia) => (
+              <div key={dia}>
+                <div className="previa-dia">Dia {dia}</div>
+                {previa.filter((a) => a.dia === dia).map((a) => {
+                  const tirada = fora.has(a.id);
+                  return (
+                    <div key={a.id} className={"previa-it" + (tirada ? " fora" : "")}>
+                      <span style={{ flex: 1 }}><b>{a.nome}</b><small>{[a.cat, a.bairro, a.dur + " min"].filter(Boolean).join(" · ")}</small></span>
+                      <button className={"btn btn-sm " + (tirada ? "btn-ghost" : "previa-x")} onClick={() => alternar(a.id)} aria-label={(tirada ? "Devolver " : "Tirar ") + a.nome}>
+                        {tirada ? <><Icon name="refresh" />Devolver</> : <Icon name="close" />}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+            <div className="previa-pe">
+              <button className="btn btn-sun btn-block" onClick={generate}>
+                <Icon name="route" />Montar roteiro{fora.size ? " sem " + fora.size + (fora.size === 1 ? " atração" : " atrações") : ""}
+              </button>
+              <button className="btn btn-ghost btn-block" onClick={() => setPrevia(null)}>Voltar</button>
+            </div>
+          </div>
+        </>,
+        document.querySelector(".app") ?? document.body,
+      )}
 
       {/* desenhada na moldura do app (.app), não na área que rola: cobre a tela toda mesmo com a página rolada */}
       {gen != null && createPortal(
