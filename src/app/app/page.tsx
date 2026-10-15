@@ -60,9 +60,10 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
             </div>
           ) : (
             <>
-              <Link className="new-trip" href="/app/nova-viagem">
-                <span className="p"><Icon name="plus" /></span>
-                <span><b style={{ display: "block" }}>Planejar nova viagem</b><small className="muted" style={{ fontWeight: 500 }}>Destino, datas e hotel. O resto a gente monta.</small></span>
+              <Link className="plan-cta" href="/app/nova-viagem">
+                <span className="pc-ic"><Icon name="plus" /></span>
+                <span style={{ flex: 1 }}><b>Planejar nova viagem</b><small>Destino, datas e hotel. O resto a gente monta.</small></span>
+                <Icon name="right" />
               </Link>
 
               <div className="sec-t">Meus roteiros</div>
