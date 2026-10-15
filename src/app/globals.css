@@ -390,3 +390,8 @@ a.li:active,button.li:active,.ci:active{transform:scale(.985)}
 
 /* passos de "Montando seu roteiro": cobre o app inteiro, por cima de janelas e botões flutuantes */
 .app>.gen{z-index:55}
+
+/* No celular, campo com fonte < 16px faz o Safari dar zoom ao tocar (os campos herdam 14-15px do bloco) */
+@media (pointer: coarse) {
+  input, select, textarea { font-size: 16px !important; }
+}
