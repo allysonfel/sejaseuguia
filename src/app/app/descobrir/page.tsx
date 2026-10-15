@@ -1,5 +1,5 @@
 import AppHeader from "@/components/AppHeader";
-import Discover from "@/components/Discover";
+import Discover, { type Ia } from "@/components/Discover";
 import { getUserById, requireTraveler } from "@/lib/auth";
 import { getRules, listTripsForUser, mapPoi, pickActiveTrip, poisForTrip, tripStatus } from "@/lib/data";
 import { sql } from "@/lib/db";
@@ -12,6 +12,8 @@ export default async function Descobrir() {
   const found = (await sql<(Parameters<typeof mapPoi>[0] & { found_at: Date })[]>`
     SELECT p.*, d.created_at AS found_at FROM discoveries d JOIN pois p ON p.id = d.poi_id
     WHERE d.user_id = ${u.id} ORDER BY d.created_at DESC LIMIT 30`).map((r) => ({ ...mapPoi(r), foundAt: r.found_at.toISOString() }));
+  const foundIa = (await sql<{ ia: Ia; created_at: Date }[]>`
+    SELECT ia, created_at FROM ia_discoveries WHERE user_id = ${u.id} ORDER BY created_at DESC LIMIT 30`).map((r) => ({ ia: r.ia, foundAt: r.created_at.toISOString() }));
   const today = todayIso();
   const owner = trip && trip.access !== "owner" ? await getUserById(trip.ownerId) : u;
   return (
@@ -19,6 +21,7 @@ export default async function Descobrir() {
       <AppHeader title="O que é esse lugar?" sub="Fotografe e descubra" avatar={u.avatar} />
       <Discover
         found={found}
+        foundIa={foundIa}
         trip={trip}
         pois={trip ? await poisForTrip(trip) : {}}
         profile={owner?.profile ?? DEFAULT_PROFILE}

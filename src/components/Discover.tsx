@@ -13,7 +13,7 @@ import type { TripAccess } from "@/lib/data";
 import type { Poi, Profile, Rules, Trip } from "@/lib/types";
 
 type Near = Poi & { dist: number };
-type Ia = {
+export type Ia = {
   poiId: number | null; confianca: "alta" | "media" | "baixa"; naoELugar: boolean; nome: string; resposta: string;
   observar?: string[]; contexto?: string; dica?: string; curiosidades: string[];
 };
@@ -102,6 +102,8 @@ function openNow(p: Poi) {
 
 type Props = {
   found: (Poi & { foundAt: string })[];
+  /** reconhecidos só pela IA (fora da base) */
+  foundIa: { ia: Ia; foundAt: string }[];
   trip: (Trip & { access: TripAccess }) | null;
   pois: Record<number, Poi>;
   profile: Profile;
@@ -110,11 +112,12 @@ type Props = {
   geo: boolean;
 };
 
-export default function Discover({ found: initialFound, trip, pois, profile, rules, dayIdx, geo }: Props) {
+export default function Discover({ found: initialFound, foundIa: initialFoundIa, trip, pois, profile, rules, dayIdx, geo }: Props) {
   const canEdit = !!trip && trip.access !== "viewer";
   const ed = useTripEditor(trip?.id ?? 0, trip?.days ?? [], trip?.version ?? 0, canEdit);
   const ctx = useMemo<Ctx | null>(() => (trip ? { pois, hotel: trip.hotel, profile, rules, inicio: trip.inicio } : null), [trip, pois, profile, rules]);
   const [found, setFound] = useState(initialFound);
+  const [foundIa, setFoundIa] = useState(initialFoundIa);
   const [ph, setPh] = useState<Photo>(null);
   const file = useRef<HTMLInputElement>(null);
 
@@ -150,11 +153,24 @@ export default function Discover({ found: initialFound, trip, pois, profile, rul
           : "Não reconhecemos o lugar pela foto. Tente uma foto mais de frente ou libere a localização para ver o que está perto.";
         setPh((x) => x && { ...x, near: r.pois, pick, ia, iaView, err });
         if (r.pois[pick] && !iaView) save(r.pois[pick]);
+        if (iaView && ia?.nome) saveIa(ia);
       } catch (e) {
         setPh((x) => x && { ...x, err: (e as Error).message });
       }
     })();
   }
+
+  function saveIa(ia: Ia) {
+    api("/api/discoveries", { body: { ia } }).catch(() => {});
+    setFoundIa((l) => [{ ia, foundAt: new Date().toISOString() }, ...l.filter((x) => x.ia.nome !== ia.nome)]);
+  }
+
+  // Minhas descobertas: da base e reconhecidas pela IA, a mais recente primeiro.
+  const descobertas = [
+    ...found.map((p) => ({ key: "p" + p.id, nome: p.nome, sub: [p.cat, p.bairro].filter(Boolean).join(" · "), foundAt: p.foundAt, abrir: () => setPh({ url: null, step: STEPS.length, err: null, near: [{ ...p, dist: -1 }], pick: 0, notIt: false, ia: null, iaView: false }) })),
+    // se o mesmo lugar também está salvo pela base, mostra só o da base (tem horários e preços)
+    ...foundIa.filter((x) => !found.some((p) => p.nome.toLowerCase() === x.ia.nome.toLowerCase())).map((x) => ({ key: "ia" + x.ia.nome, nome: x.ia.nome, sub: "Reconhecido pela foto", foundAt: x.foundAt, abrir: () => setPh({ url: null, step: STEPS.length, err: null, near: [], pick: 0, notIt: false, ia: x.ia, iaView: true }) })),
+  ].sort((a, b) => b.foundAt.localeCompare(a.foundAt));
 
   function save(p: Poi) {
     api("/api/discoveries", { body: { poiId: p.id } }).catch(() => {});
@@ -198,12 +214,12 @@ export default function Discover({ found: initialFound, trip, pois, profile, rul
           </p>
 
           <div className="sec-t">Minhas descobertas</div>
-          {found.length ? (
+          {descobertas.length ? (
             <div className="box" style={{ padding: "4px 16px" }}>
-              {found.map((p) => (
-                <button key={p.id} className="li" style={{ width: "100%", textAlign: "left" }} onClick={() => setPh({ url: null, step: STEPS.length, err: null, near: [{ ...p, dist: -1 }], pick: 0, notIt: false, ia: null, iaView: false })}>
+              {descobertas.map((d) => (
+                <button key={d.key} className="li" style={{ width: "100%", textAlign: "left" }} onClick={d.abrir}>
                   <span className="li-ic"><Icon name="star" /></span>
-                  <div className="li-m"><b>{p.nome}</b><small>{p.cat} · {p.bairro} · {relTime(p.foundAt)}</small></div>
+                  <div className="li-m"><b>{d.nome}</b><small>{[d.sub, relTime(d.foundAt)].filter(Boolean).join(" · ")}</small></div>
                   <Icon name="right" />
                 </button>
               ))}
@@ -322,6 +338,7 @@ export default function Discover({ found: initialFound, trip, pois, profile, rul
                 <div className="grab" />
                 <div className="row" style={{ gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
                   <span className="badge b-sea"><Icon name="camera" />Reconhecido pela foto</span>
+                  {iaCard.nome && <span className="badge b-sea"><Icon name="check" />Salvo em Minhas descobertas</span>}
                 </div>
                 <h2>{iaCard.nome || "Não reconhecemos com certeza"}</h2>
                 <IaDetalhes ia={iaCard} />

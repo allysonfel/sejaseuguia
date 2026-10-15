@@ -161,6 +161,16 @@ async function createSchema() {
       UNIQUE (user_id, poi_id)
     );
 
+    -- Lugares que a IA reconheceu pela foto e que não estão na base (o texto da IA, nunca a foto).
+    CREATE TABLE IF NOT EXISTS ia_discoveries (
+      id SERIAL PRIMARY KEY,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      nome TEXT NOT NULL,
+      ia JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (user_id, nome)
+    );
+
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value JSONB NOT NULL,

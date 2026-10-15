@@ -9,7 +9,9 @@ export async function exportUserData(userId: number) {
   const trips = (await listTripsForUser(u)).filter((t) => t.ownerId === u.id);
   const reservations = await listReservations(trips.map((t) => t.id));
   const ratings = await sql`SELECT r.trip_id, p.nome AS lugar, r.stars, r.created_at FROM ratings r JOIN pois p ON p.id = r.poi_id WHERE r.user_id = ${u.id}`;
-  const discoveries = await sql`SELECT p.nome AS lugar, d.created_at FROM discoveries d JOIN pois p ON p.id = d.poi_id WHERE d.user_id = ${u.id}`;
+  const discoveries = await sql`
+    SELECT p.nome AS lugar, d.created_at FROM discoveries d JOIN pois p ON p.id = d.poi_id WHERE d.user_id = ${u.id}
+    UNION ALL SELECT nome, created_at FROM ia_discoveries WHERE user_id = ${u.id}`;
   return {
     geradoEm: new Date().toISOString(),
     conta: { nome: u.nome, email: u.email, criadaEm: u.createdAt, consentimentoEm: u.consentAt, preferencias: u.prefs },
