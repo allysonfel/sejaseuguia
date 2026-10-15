@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Icon from "@/components/Icon";
+import Gui from "@/components/quiz/Gui";
 import { QUICK, entender, executar, reply, resumir, type Intencao, type Reply } from "@/lib/assistant";
 import type { Ctx } from "@/lib/engine";
 import type { DayPlan, ReplanKind } from "@/lib/types";
@@ -19,7 +20,7 @@ type Props = {
 // Conversa guardada só enquanto a tela está aberta.
 export default function AssistantChat({ ctx, days, dayIdx, moeda, onClose, onApply }: Props) {
   const [msgs, setMsgs] = useState<Msg[]>([
-    { r: "b", t: "Oi! Estou acompanhando o Dia " + (dayIdx + 1) + " com você. Posso trocar atividades, ajustar o ritmo, sugerir lugares para comer perto do roteiro ou reorganizar o dia por causa da chuva. É só pedir do seu jeito." },
+    { r: "b", t: "Oi! Eu sou o Gui e estou acompanhando o Dia " + (dayIdx + 1) + " com você. Posso trocar atividades, ajustar o ritmo, sugerir lugares para comer perto do roteiro ou reorganizar o dia por causa da chuva. É só pedir do seu jeito." },
   ]);
   const [typing, setTyping] = useState(false);
   const [txt, setTxt] = useState("");
@@ -65,9 +66,9 @@ export default function AssistantChat({ ctx, days, dayIdx, moeda, onClose, onApp
       <div className="ai-pop">
         <div className="chat">
           <div className="chat-h">
-            <span className="av"><Icon name="chatai" /></span>
+            <span className="av"><Gui size={36} /></span>
             <div style={{ flex: 1 }}>
-              <b style={{ fontFamily: "var(--serif)", fontSize: 17 }}>Assistente da viagem</b>
+              <b style={{ fontFamily: "var(--serif)", fontSize: 17 }}>Gui, assistente da viagem</b>
               <div><small className="muted">Conhece seu roteiro e ajusta o Dia {dayIdx + 1}</small></div>
             </div>
             <button className="icon-btn" onClick={onClose} aria-label="Fechar"><Icon name="close" /></button>

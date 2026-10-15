@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ChuvaConfete, Explosao } from "@/components/Festa";
 import Icon from "@/components/Icon";
+import BotaoAssistente from "@/components/BotaoAssistente";
 import Gui from "@/components/quiz/Gui";
 import TabBar from "@/components/TabBar";
 import { mapsLink } from "@/lib/client";
@@ -287,7 +288,7 @@ export default function TravelMode({ trip, pois, profile, rules, live: viagemAoV
           onApply={(preview, kind, label) => { ed.commit(preview, kind, "Assistente: " + label); setBanner(label + ". O motor validou horários e trajetos."); setChat(false); }}
         />
       ) : (
-        <button className="ai-fab" onClick={() => setChat(true)} title="Assistente da viagem"><Icon name="chatai" /></button>
+        <BotaoAssistente onClick={() => setChat(true)} />
       ))}
     </>
   );

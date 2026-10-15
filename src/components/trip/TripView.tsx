@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { ChuvaConfete } from "@/components/Festa";
 import Icon from "@/components/Icon";
+import BotaoAssistente from "@/components/BotaoAssistente";
 import Gui from "@/components/quiz/Gui";
 import TabBar from "@/components/TabBar";
 import {
@@ -272,7 +273,7 @@ export default function TripView(props: Props) {
           }}
         />
       ) : (
-        <button className="ai-fab" onClick={() => setChat(true)} title="Assistente da viagem"><Icon name="chatai" /></button>
+        <BotaoAssistente onClick={() => setChat(true)} />
       ))}
     </>
   );

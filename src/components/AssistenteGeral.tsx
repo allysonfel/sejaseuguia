@@ -2,6 +2,8 @@
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
+import BotaoAssistente from "@/components/BotaoAssistente";
+import Gui from "@/components/quiz/Gui";
 
 // Assistente em todas as telas do app. No roteiro e no modo viagem quem aparece é o
 // assistente da viagem (que mexe no dia); essas telas avisam por useAssistenteDaViagem
@@ -33,7 +35,7 @@ export default function AssistenteGeral({ children }: { children: React.ReactNod
       {children}
       {!oculto && (aberto
         ? <Chat path={path} onClose={() => setAberto(false)} />
-        : <button className="ai-fab" style={COM_MENU.test(path) ? undefined : { bottom: 22 }} onClick={() => setAberto(true)} title="Assistente"><Icon name="chatai" /></button>)}
+        : <BotaoAssistente style={COM_MENU.test(path) ? undefined : { bottom: 22 }} onClick={() => setAberto(true)} />)}
     </Ocultar.Provider>
   );
 }
@@ -44,7 +46,7 @@ let guardada: Msg[] | null = null;
 function Chat({ path, onClose }: { path: string; onClose: () => void }) {
   const router = useRouter();
   const [msgs, setMsgs] = useState<Msg[]>(guardada ?? [
-    { r: "b", t: "Oi! Pode me perguntar qualquer coisa: como usar o app, sobre a sua viagem ou dicas do destino. Para mudar o roteiro, abra o Roteiro e me chame por lá." },
+    { r: "b", t: "Oi! Eu sou o Gui, seu assistente. Pode me perguntar qualquer coisa: como usar o app, sobre a sua viagem ou dicas do destino. Para mudar o roteiro, abra o Roteiro e me chame por lá." },
   ]);
   const [typing, setTyping] = useState(false);
   const [txt, setTxt] = useState("");
@@ -90,9 +92,9 @@ function Chat({ path, onClose }: { path: string; onClose: () => void }) {
       <div className="ai-pop">
         <div className="chat">
           <div className="chat-h">
-            <span className="av"><Icon name="chatai" /></span>
+            <span className="av"><Gui size={36} /></span>
             <div style={{ flex: 1 }}>
-              <b style={{ fontFamily: "var(--serif)", fontSize: 17 }}>Assistente</b>
+              <b style={{ fontFamily: "var(--serif)", fontSize: 17 }}>Gui, seu assistente</b>
               <div><small className="muted">Tira dúvidas do app e da sua viagem</small></div>
             </div>
             <button className="icon-btn" onClick={onClose} aria-label="Fechar"><Icon name="close" /></button>
