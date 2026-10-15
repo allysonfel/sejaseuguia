@@ -3,7 +3,7 @@ import dynamic from "next/dynamic";
 import Icon from "@/components/Icon";
 import { mapsLink } from "@/lib/client";
 import type { SDay } from "@/lib/engine";
-import { hm } from "@/lib/format";
+import { hm, km1 } from "@/lib/format";
 import type { Hotel } from "@/lib/types";
 
 const LeafletMap = dynamic(() => import("@/components/LeafletMap"), { ssr: false, loading: () => <div className="lmap" /> });
@@ -26,9 +26,9 @@ export default function MapTab({ d, hotel }: { d: SDay; hotel: Hotel }) {
           {d.items.map((it, i) => (
             <div key={i} className="li">
               <span className="li-ic mono" style={{ background: "var(--navy)", color: "var(--sun)", fontWeight: 800 }}>{i + 1}</span>
-              <div className="li-m"><b>{it.poi.nome}</b><small>{hm(it.ini)} · {it.tr.min} min {it.tr.modo} desde o ponto anterior</small></div>
-              <a className="btn btn-ghost btn-sm" href={mapsLink(it.poi, i ? d.items[i - 1].poi : hotel, it.tr.modo)} target="_blank" rel="noreferrer" title="Abrir rota no app de mapas">
-                <Icon name="nav" />
+              <div className="li-m"><b>{it.poi.nome}</b><small>{hm(it.ini)} · {km1(it.tr.km)} km, {it.tr.min} min {it.tr.modo} desde {i ? "a parada anterior" : "o hotel"}</small></div>
+              <a className="btn btn-ghost btn-sm" href={mapsLink(it.poi, i ? d.items[i - 1].poi : hotel, it.tr.modo)} target="_blank" rel="noreferrer" aria-label={"Como ir até " + it.poi.nome + " no Google Maps"}>
+                <Icon name="nav" />Como ir
               </a>
             </div>
           ))}

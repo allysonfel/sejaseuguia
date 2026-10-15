@@ -362,6 +362,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:700;letter-spacing:-.01em;line-hei
 .map-box{margin:10px 18px 0;border-radius:20px;overflow:hidden;border:1px solid var(--line);background:#fff}
 .map-box>svg{display:block;width:100%}
 .map-list{padding:6px 14px 10px}
+.map-list .btn{flex:none;white-space:nowrap}
 .fab{position:absolute;right:16px;bottom:16px;z-index:12;display:flex;align-items:center;gap:8px;background:linear-gradient(90deg,#5B3EF0,#8C5BFF);color:#fff;font-weight:800;border-radius:99px;padding:0 16px 0 12px;height:48px;box-shadow:0 12px 26px rgba(91,62,240,.4)}
 .fab svg{width:20px;height:20px}
 
