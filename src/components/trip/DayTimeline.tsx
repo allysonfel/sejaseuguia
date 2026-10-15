@@ -3,9 +3,40 @@ import { Fragment } from "react";
 import Icon from "@/components/Icon";
 import { carryPending, whyLines, type Ctx, type Leg, type SDay } from "@/lib/engine";
 import { durTxt, hm, km1, priceTxt } from "@/lib/format";
+import { mapsLink } from "@/lib/client";
 import type { IconName } from "@/lib/icons";
 
 export const legIcon = (l: Leg): IconName => (l.modo === "a pé" ? "walk" : l.modo === "transporte público" ? "metro" : "car");
+
+// Como chegar: cada botão abre o Google Maps saindo de onde a pessoa estiver (sem origem, o Maps usa a localização dela).
+// Ônibus e trem abrem o mesmo modo "transporte público": o link do Google Maps não separa os dois.
+const MODOS = [
+  { ic: "walk", nome: "A pé", modo: "a pé" },
+  { ic: "car", nome: "Carro", modo: "carro" },
+  { ic: "bus", nome: "Ônibus", modo: "transporte público" },
+  { ic: "metro", nome: "Trem", modo: "transporte público" },
+] as const;
+
+function ComoChegar({ dest, nome, sugerido }: { dest: { lat: number; lng: number }; nome: string; sugerido: Leg["modo"] }) {
+  const sug = sugerido === "app de transporte" ? "carro" : sugerido;
+  return (
+    <div className="modos">
+      {MODOS.map((m) => (
+        <a
+          key={m.nome}
+          className={m.modo === sug ? "on" : ""}
+          href={mapsLink(dest, null, m.modo)}
+          target="_blank"
+          rel="noreferrer"
+          title={m.nome + " até " + nome}
+          aria-label={"Abrir no Google Maps: " + m.nome.toLowerCase() + " até " + nome}
+        >
+          <Icon name={m.ic} />
+        </a>
+      ))}
+    </div>
+  );
+}
 
 type Actions = {
   replan: (v: "rain" | "tired" | "late" | "save") => void;
@@ -61,7 +92,8 @@ export default function DayTimeline({ d, next, ctx, moeda, canEdit, open, setOpe
                 <span />
                 <div className="ln">
                   <Icon name={legIcon(it.tr)} />
-                  <b>{it.tr.min} min</b> {it.tr.modo} · {km1(it.tr.km)} km{it.wait > 10 && it.wait <= 90 ? " · " + durTxt(it.wait) + " livres" : ""}
+                  <span><b>{it.tr.min} min</b> {it.tr.modo} · {km1(it.tr.km)} km{it.wait > 10 && it.wait <= 90 ? " · " + durTxt(it.wait) + " livres" : ""}</span>
+                  <ComoChegar dest={p} nome={p.nome} sugerido={it.tr.modo} />
                 </div>
               </div>
               {it.wait > 90 && (
@@ -117,7 +149,10 @@ export default function DayTimeline({ d, next, ctx, moeda, canEdit, open, setOpe
         })}
         <div className="leg">
           <span />
-          <div className="ln"><Icon name={legIcon(d.back)} /><b>{d.back.min} min</b> de volta ao hotel · chegada <b className="mono">{hm(d.end)}</b></div>
+          <div className="ln">
+            <Icon name={legIcon(d.back)} /><span><b>{d.back.min} min</b> de volta ao hotel · chegada <b className="mono">{hm(d.end)}</b></span>
+            <ComoChegar dest={ctx.hotel} nome={ctx.hotel.nome} sugerido={d.back.modo} />
+          </div>
         </div>
         {d.endFixed && <div className="leg"><span /><div className="ln"><Icon name="plane" />Saída para o aeroporto às <b className="mono">{d.endFixed}</b></div></div>}
       </div>
