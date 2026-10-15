@@ -49,18 +49,44 @@ type Photo = { url: string | null; step: number; err: string | null; near: Near[
 const STEPS = ["Pegando sua localização", "Procurando lugares conhecidos a menos de 1,5 km", "Ordenando do mais perto para o mais longe", "Buscando a história na nossa base"];
 const STEPS_FOTO = ["Pegando sua localização", "Olhando a sua foto", "Comparando com os lugares por perto", "Buscando a história na nossa base"];
 
+// Localização: tenta a precisa (GPS) e, se demorar ou falhar, a aproximada (rede), que responde
+// mais rápido dentro de prédios. Devolve o código do erro (1 = permissão negada) quando não dá.
+function pegarLocal(): Promise<{ lat: number; lng: number } | { erro: number }> {
+  const tentar = (alta: boolean) =>
+    new Promise<{ lat: number; lng: number } | { erro: number }>((ok) =>
+      navigator.geolocation.getCurrentPosition(
+        (pos) => ok({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (e) => ok({ erro: e.code }),
+        { enableHighAccuracy: alta, timeout: alta ? 10000 : 8000, maximumAge: alta ? 30000 : 300000 },
+      ),
+    );
+  return tentar(true).then((r) => ("erro" in r && r.erro !== 1 ? tentar(false) : r));
+}
+
+const SEM_LOCAL = {
+  negada: "Sem acesso à localização não dá para saber o que está perto. Libere a localização para este site e tente de novo.",
+  falhou: "Não conseguimos pegar a sua localização agora. Confira se o GPS está ligado e tente de novo.",
+};
+
 // Reduz a foto no aparelho antes de enviar (lado maior até 1024 px, JPEG):
-// sobe rápido no 4G e gasta menos da cota da IA.
+// sobe rápido no 4G e gasta menos da cota da IA. Se o navegador não gerar JPEG
+// (alguns devolvem PNG, bem maior), diminui até caber no limite do servidor.
+const MAX_FOTO = 1_400_000;
 async function reduzir(f: File): Promise<string | null> {
   try {
     const img = await createImageBitmap(f);
-    const k = Math.min(1, 1024 / Math.max(img.width, img.height));
-    const c = document.createElement("canvas");
-    c.width = Math.round(img.width * k);
-    c.height = Math.round(img.height * k);
-    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+    let url: string | null = null;
+    for (const lado of [1024, 800, 640, 480]) {
+      const k = Math.min(1, lado / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k);
+      c.height = Math.round(img.height * k);
+      c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+      url = c.toDataURL("image/jpeg", 0.8);
+      if (url.length <= MAX_FOTO) break;
+    }
     img.close();
-    return c.toDataURL("image/jpeg", 0.8);
+    return url && url.length <= MAX_FOTO ? url : null;
   } catch {
     return null;
   }
@@ -98,35 +124,36 @@ export default function Discover({ found: initialFound, trip, pois, profile, rul
     const url = f ? URL.createObjectURL(f) : null;
     const foto = f ? reduzir(f) : Promise.resolve(null);
     setPh({ url, step: 0, err: null, near: [], pick: 0, notIt: false, ia: null, iaView: false });
-    if (!geo) return setPh((x) => x && { ...x, err: "Você desligou o uso da localização em Perfil > Privacidade e dados. Ligue de novo para descobrir o que está perto." });
-    if (!navigator.geolocation) return setPh((x) => x && { ...x, err: "Este aparelho não informa a localização." });
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        setPh((x) => x && { ...x, step: 1 });
-        try {
-          const { latitude: lat, longitude: lng } = pos.coords;
-          const img = await foto;
-          const r = img
-            ? await api<{ pois: Near[]; ia: Ia | null }>("/api/identify", { body: { lat, lng, foto: img } })
-            : { ...(await api<{ pois: Near[] }>(`/api/nearby?lat=${lat}&lng=${lng}`)), ia: null };
-          for (let s = 2; s <= STEPS.length; s++) {
-            await new Promise((ok) => setTimeout(ok, 450));
-            setPh((x) => x && { ...x, step: s });
-          }
-          const ia = r.ia;
-          const pick = ia?.poiId ? Math.max(0, r.pois.findIndex((p) => p.id === ia.poiId)) : 0;
-          // Cartão da IA quando ela reconheceu um lugar fora da nossa base (ou não há nada cadastrado por perto).
-          const iaView = !!ia && !ia.poiId && !ia.naoELugar && (ia.confianca !== "baixa" || !r.pois.length);
-          const err = r.pois.length || ia ? null : "Não encontramos lugares cadastrados a menos de 1,5 km de você.";
-          setPh((x) => x && { ...x, near: r.pois, pick, ia, iaView, err });
-          if (r.pois[pick] && !iaView) save(r.pois[pick]);
-        } catch (e) {
-          setPh((x) => x && { ...x, err: (e as Error).message });
+    // Sem foto, a localização é obrigatória. Com foto, a IA tenta reconhecer mesmo sem ela.
+    if (!geo && !f) return setPh((x) => x && { ...x, err: "Você desligou o uso da localização em Perfil > Privacidade e dados. Ligue de novo para descobrir o que está perto." });
+    if (!navigator.geolocation && !f) return setPh((x) => x && { ...x, err: "Este aparelho não informa a localização." });
+    (async () => {
+      const local = geo && navigator.geolocation ? await pegarLocal() : { erro: 1 };
+      const pos = "erro" in local ? null : local;
+      const img = await foto;
+      if (!pos && !img) return setPh((x) => x && { ...x, err: "erro" in local && local.erro === 1 ? SEM_LOCAL.negada : SEM_LOCAL.falhou });
+      setPh((x) => x && { ...x, step: 1 });
+      try {
+        const r = img
+          ? await api<{ pois: Near[]; ia: Ia | null }>("/api/identify", { body: { lat: pos?.lat ?? null, lng: pos?.lng ?? null, foto: img, destinationId: trip?.destinationId ?? null } })
+          : { ...(await api<{ pois: Near[] }>(`/api/nearby?lat=${pos!.lat}&lng=${pos!.lng}`)), ia: null };
+        for (let s = 2; s <= STEPS.length; s++) {
+          await new Promise((ok) => setTimeout(ok, 450));
+          setPh((x) => x && { ...x, step: s });
         }
-      },
-      () => setPh((x) => x && { ...x, err: "Sem acesso à localização não dá para saber o que está perto. Libere a localização para este site e tente de novo." }),
-      { enableHighAccuracy: true, timeout: 12000 },
-    );
+        const ia = r.ia;
+        const pick = ia?.poiId ? Math.max(0, r.pois.findIndex((p) => p.id === ia.poiId)) : 0;
+        // Cartão da IA quando ela reconheceu um lugar fora da nossa base (ou não há nada cadastrado por perto).
+        const iaView = !!ia && !ia.poiId && !ia.naoELugar && (ia.confianca !== "baixa" || !r.pois.length);
+        const err = r.pois.length || ia ? null
+          : pos ? "Não encontramos lugares cadastrados a menos de 1,5 km de você."
+          : "Não reconhecemos o lugar pela foto. Tente uma foto mais de frente ou libere a localização para ver o que está perto.";
+        setPh((x) => x && { ...x, near: r.pois, pick, ia, iaView, err });
+        if (r.pois[pick] && !iaView) save(r.pois[pick]);
+      } catch (e) {
+        setPh((x) => x && { ...x, err: (e as Error).message });
+      }
+    })();
   }
 
   function save(p: Poi) {
