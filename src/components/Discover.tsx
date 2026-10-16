@@ -72,20 +72,33 @@ const SEM_LOCAL = {
 // sobe rápido no 4G e gasta menos da cota da IA. Se o navegador não gerar JPEG
 // (alguns devolvem PNG, bem maior), diminui até caber no limite do servidor.
 const MAX_FOTO = 1_400_000;
+// Alguns iPhones não abrem a foto da câmera com createImageBitmap: aí lê pela <img>.
+async function abrirImagem(f: File): Promise<{ img: CanvasImageSource; w: number; h: number; fechar: () => void }> {
+  try {
+    const b = await createImageBitmap(f);
+    return { img: b, w: b.width, h: b.height, fechar: () => b.close() };
+  } catch {
+    const url = URL.createObjectURL(f);
+    const el = new Image();
+    el.src = url;
+    await el.decode();
+    return { img: el, w: el.naturalWidth, h: el.naturalHeight, fechar: () => URL.revokeObjectURL(url) };
+  }
+}
 async function reduzir(f: File): Promise<string | null> {
   try {
-    const img = await createImageBitmap(f);
+    const { img, w, h, fechar } = await abrirImagem(f);
     let url: string | null = null;
     for (const lado of [1024, 800, 640, 480]) {
-      const k = Math.min(1, lado / Math.max(img.width, img.height));
+      const k = Math.min(1, lado / Math.max(w, h));
       const c = document.createElement("canvas");
-      c.width = Math.round(img.width * k);
-      c.height = Math.round(img.height * k);
+      c.width = Math.round(w * k);
+      c.height = Math.round(h * k);
       c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
       url = c.toDataURL("image/jpeg", 0.8);
       if (url.length <= MAX_FOTO) break;
     }
-    img.close();
+    fechar();
     return url && url.length <= MAX_FOTO ? url : null;
   } catch {
     return null;
@@ -134,6 +147,8 @@ export default function Discover({ found: initialFound, foundIa: initialFoundIa,
       const local = geo && navigator.geolocation ? await pegarLocal() : { erro: 1 };
       const pos = "erro" in local ? null : local;
       const img = await foto;
+      // Com foto, a localização é só uma ajuda: sem ela, segue só com a foto.
+      if (f && !img) return setPh((x) => x && { ...x, err: "Não conseguimos abrir esta foto. Tente tirar de novo." });
       if (!pos && !img) return setPh((x) => x && { ...x, err: "erro" in local && local.erro === 1 ? SEM_LOCAL.negada : SEM_LOCAL.falhou });
       setPh((x) => x && { ...x, step: 1 });
       try {
@@ -150,7 +165,7 @@ export default function Discover({ found: initialFound, foundIa: initialFoundIa,
         const iaView = !!ia && !ia.poiId && !ia.naoELugar && (ia.confianca !== "baixa" || !r.pois.length);
         const err = r.pois.length || ia ? null
           : pos ? "Não encontramos lugares cadastrados a menos de 1,5 km de você."
-          : "Não reconhecemos o lugar pela foto. Tente uma foto mais de frente ou libere a localização para ver o que está perto.";
+          : "Não conseguimos reconhecer o lugar só pela foto agora. Tente de novo em instantes, com o lugar mais de frente.";
         setPh((x) => x && { ...x, near: r.pois, pick, ia, iaView, err });
         if (r.pois[pick] && !iaView) save(r.pois[pick]);
         if (iaView && ia?.nome) saveIa(ia);
@@ -206,7 +221,7 @@ export default function Discover({ found: initialFound, foundIa: initialFoundIa,
           <button className="btn btn-ghost btn-block" style={{ marginTop: 8 }} onClick={() => start(null)}><Icon name="pin" />Só ver o que está perto de mim</button>
           <div className="how">
             <div><b>1</b>Aponte a câmera para o lugar</div>
-            <div><b>2</b>Usamos sua localização para achar o que está perto</div>
+            <div><b>2</b>Reconhecemos pela foto (e, se você permitir, pela localização)</div>
             <div><b>3</b>Veja a história, curiosidades e horários</div>
           </div>
           <p className="muted" style={{ fontSize: 12, margin: "-4px 2px 4px", lineHeight: 1.5 }}>
