@@ -194,6 +194,14 @@ async function createSchema() {
       expires_at TIMESTAMPTZ NOT NULL
     );
 
+    -- Falhas de login por e-mail e por IP (limite de tentativas, janela de 15 min).
+    CREATE TABLE IF NOT EXISTS tentativas_falhas (
+      id BIGSERIAL PRIMARY KEY,
+      chave TEXT NOT NULL,
+      criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS tentativas_falhas_idx ON tentativas_falhas (chave, criado_em);
+
     CREATE TABLE IF NOT EXISTS destination_requests (
       id SERIAL PRIMARY KEY,
       termo TEXT NOT NULL,
