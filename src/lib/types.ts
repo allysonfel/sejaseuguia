@@ -151,6 +151,8 @@ export type Trip = {
   destinationId: number;
   destino: string;
   pais: string;
+  /** ISO 3166-1 alfa-2 do país do destino (BR, FR...); null em destino antigo sem o dado. */
+  paisIso: string | null;
   moeda: string;
   cor1: string;
   cor2: string;

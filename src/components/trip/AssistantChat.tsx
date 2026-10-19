@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Icon from "@/components/Icon";
 import Gui from "@/components/quiz/Gui";
+import { duvidaEmergencia } from "@/lib/emergencia";
 import { QUICK, entender, executar, reply, resumir, type Intencao, type Reply } from "@/lib/assistant";
 import type { Ctx } from "@/lib/engine";
 import type { DayPlan, ReplanKind } from "@/lib/types";
@@ -15,10 +16,12 @@ type Props = {
   moeda: string;
   onClose: () => void;
   onApply: (preview: DayPlan[], kind: ReplanKind, label: string) => void;
+  /** País da viagem: pergunta de emergência sai com os números fixos de lá. */
+  pais: { pais: string; paisIso: string | null };
 };
 
 // Conversa guardada só enquanto a tela está aberta.
-export default function AssistantChat({ ctx, days, dayIdx, moeda, onClose, onApply }: Props) {
+export default function AssistantChat({ ctx, days, dayIdx, moeda, onClose, onApply, pais }: Props) {
   const [msgs, setMsgs] = useState<Msg[]>([
     { r: "b", t: "Oi! Eu sou o Gui e estou acompanhando o Dia " + (dayIdx + 1) + " com você. Posso trocar atividades, ajustar o ritmo, sugerir lugares para comer perto do roteiro ou reorganizar o dia por causa da chuva. É só pedir do seu jeito." },
   ]);
@@ -39,8 +42,12 @@ export default function AssistantChat({ ctx, days, dayIdx, moeda, onClose, onApp
     setMsgs((m) => [...m, { r: "u", t: q }]);
     setTyping(true);
     let r: Reply;
-    const local = entender(q, days[dayIdx], ctx);
-    if (local) {
+    const emerg = duvidaEmergencia(q, pais);
+    const local = emerg ? null : entender(q, days[dayIdx], ctx);
+    if (emerg) {
+      await new Promise((ok) => setTimeout(ok, 300));
+      r = { t: emerg };
+    } else if (local) {
       await new Promise((ok) => setTimeout(ok, 450));
       r = executar(local, days, dayIdx, ctx, moeda);
     } else {

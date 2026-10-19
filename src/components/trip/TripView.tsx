@@ -10,9 +10,10 @@ import {
   addPoi, carryOver, fillGap, lateAdj, moveItem, rainSwap, removeAt, saveAdj, schedAll, tiredAdj,
   type Ctx, type ReplanResult,
 } from "@/lib/engine";
-import { shortRange } from "@/lib/format";
+import { hm, shortRange } from "@/lib/format";
 import { somFesta } from "@/lib/sons";
 import { toast } from "@/lib/toast";
+import type { ClimaMes } from "@/lib/clima";
 import type { TripAccess } from "@/lib/data";
 import type { Poi, Profile, ReplanKind, Reservation, Rules, Trip, TripMember } from "@/lib/types";
 import AssistantChat from "./AssistantChat";
@@ -20,7 +21,7 @@ import { useAssistenteDaViagem } from "@/components/AssistenteGeral";
 import DayTimeline from "./DayTimeline";
 import MapTab from "./MapTab";
 import PeopleTab, { ShareSheet } from "./PeopleTab";
-import ReservationsTab, { AddReservationSheet } from "./ReservationsTab";
+import ReservationsTab, { AddReservationSheet, type SugestaoReserva } from "./ReservationsTab";
 import { useTripEditor } from "./useTripEditor";
 
 type Tab = "roteiro" | "mapa" | "reservas" | "pessoas";
@@ -31,6 +32,7 @@ type Props = {
   pois: Record<number, Poi>;
   profile: Profile;
   rules: Rules;
+  clima: ClimaMes | null;
   reservations: Reservation[];
   members: TripMember[];
   ownerName: string;
@@ -48,6 +50,11 @@ const lerStorage = (k: string) => {
   try { return localStorage.getItem(k); } catch { return null; }
 };
 
+const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+// Ex.: "Clima em novembro: costuma fazer 5 a 12 °C, com chuva em uns 12 dias"
+const climaTxt = (c: ClimaMes) =>
+  `Clima em ${MESES[c.mes - 1]}: costuma fazer ${c.tmin} a ${c.tmax} °C, ${c.diasChuva <= 1 ? "quase sem chuva" : `com chuva em uns ${c.diasChuva} dias`}`;
+
 export default function TripView(props: Props) {
   const { trip, pois, profile, rules } = props;
   const canEdit = trip.access !== "viewer";
@@ -64,6 +71,7 @@ export default function TripView(props: Props) {
   const [reservations, setReservations] = useState(props.reservations);
   const [members, setMembers] = useState(props.members);
   const [sheet, setSheet] = useState<null | "addres" | "share">(null);
+  const [resInicial, setResInicial] = useState<SugestaoReserva | undefined>(undefined);
   const [chat, setChat] = useState(false);
   useAssistenteDaViagem(canEdit);
   // Aviso único quando o roteiro usa lugares importados automaticamente (não revisados pela agência).
@@ -79,6 +87,14 @@ export default function TripView(props: Props) {
   };
 
   const d = sdays[day];
+
+  // Lugares do roteiro que costumam pedir reserva e ainda não têm uma guardada.
+  const sugestoesRes = useMemo<SugestaoReserva[]>(() => {
+    const ja = new Set(reservations.map((r) => r.poiId).filter(Boolean));
+    return sdays.flatMap((s, i) => s.items
+      .filter((x) => x.poi.reserva && !x.poi.meal && !x.fixed && !ja.has(x.poi.id))
+      .map((x) => ({ poiId: x.poi.id, nome: x.poi.nome, data: s.date, hora: hm(x.ini), dia: i })));
+  }, [sdays, reservations]);
 
   // Animação de troca: aba e dia entram pelo lado de onde a pessoa veio.
   const tabs: [Tab, string][] = [["roteiro", "Roteiro"], ["mapa", "Mapa"], ["reservas", "Reservas"], ["pessoas", "Pessoas"]];
@@ -174,6 +190,7 @@ export default function TripView(props: Props) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <h2>{trip.destino}</h2>
               <small>{shortRange(trip.inicio, trip.fim)} · Ponto Zero: {trip.hotel.nome}</small>
+              {props.clima && <small className="clima-mes">{climaTxt(props.clima)}</small>}
             </div>
             <button className="icon-btn" title="Compartilhar" aria-label="Compartilhar" onClick={() => (trip.access === "owner" ? setSheet("share") : irTab("pessoas"))}><Icon name="share" /></button>
           </div>
@@ -231,7 +248,8 @@ export default function TripView(props: Props) {
         {tab === "mapa" && d && <MapTab d={d} hotel={trip.hotel} />}
         {tab === "reservas" && (
           <ReservationsTab
-            tripId={trip.id} reservations={reservations} canEdit={canEdit} onAdd={() => setSheet("addres")}
+            tripId={trip.id} reservations={reservations} canEdit={canEdit} onAdd={(s) => { setResInicial(s); setSheet("addres"); }}
+            sugestoes={sugestoesRes} destino={trip.destino} pais={trip.pais} paisIso={trip.paisIso}
             onDeleted={(rid, days, v) => { setReservations((l) => l.filter((x) => x.id !== rid)); ed.adopt(days, v); }}
           />
         )}
@@ -249,7 +267,7 @@ export default function TripView(props: Props) {
 
       {sheet === "addres" && (
         <AddReservationSheet
-          trip={trip} pois={Object.values(pois)} onClose={() => setSheet(null)}
+          trip={trip} pois={Object.values(pois)} inicial={resInicial} onClose={() => setSheet(null)}
           onSaved={(r, days, v, note) => {
             setReservations((l) => [...l, r].sort((a, b) => (a.data ?? "9").localeCompare(b.data ?? "9") || (a.hora ?? "").localeCompare(b.hora ?? "")));
             ed.adopt(days, v);
@@ -262,7 +280,7 @@ export default function TripView(props: Props) {
 
       {canEdit && !sheet && (chat ? (
         <AssistantChat
-          ctx={ctx} days={ed.days} dayIdx={day} moeda={trip.moeda} onClose={() => setChat(false)}
+          ctx={ctx} days={ed.days} dayIdx={day} moeda={trip.moeda} pais={trip} onClose={() => setChat(false)}
           onApply={(preview, kind, label) => {
             ed.commit(preview, kind, "Assistente: " + label);
             irTab("roteiro");

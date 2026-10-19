@@ -254,6 +254,17 @@ async function createSchema() {
     -- nome que veio dos dados abertos (antes da tradução) e o que falta a IA de texto fazer
     ALTER TABLE pois ADD COLUMN IF NOT EXISTS nome_original TEXT;
     ALTER TABLE pois ADD COLUMN IF NOT EXISTS pendente_ia JSONB;
+
+    -- Clima típico do mês por destino (média dos últimos anos), buscado uma vez e guardado.
+    CREATE TABLE IF NOT EXISTS clima_mes (
+      destination_id INT NOT NULL REFERENCES destinations(id) ON DELETE CASCADE,
+      mes INT NOT NULL CHECK (mes BETWEEN 1 AND 12),
+      tmin INT NOT NULL,
+      tmax INT NOT NULL,
+      dias_chuva INT NOT NULL,
+      buscado_em TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (destination_id, mes)
+    );
   `);
 
   await sql`

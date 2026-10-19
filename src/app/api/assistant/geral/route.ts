@@ -1,6 +1,7 @@
 import { apiTraveler, fail, ok, readBody, str } from "@/lib/api";
 import { listTripsForUser, pickActiveTrip, tripStatus } from "@/lib/data";
 import { sql } from "@/lib/db";
+import { duvidaEmergencia, ehEmergencia } from "@/lib/emergencia";
 import { dmy, firstName, longToday, todayIso } from "@/lib/format";
 import { TELAS, duvidaComum, duvidaDocumentos, telaDoCaminho, type Tela } from "@/lib/guiaApp";
 import { responderGeral, type ViagemResumo } from "@/lib/iaAssistente";
@@ -32,6 +33,11 @@ export async function POST(req: Request) {
 
   const doc = duvidaDocumentos(q);
   if (doc) return ok(resposta(doc, "perfil"));
+  // Emergência: números fixos do país da viagem atual (ou da próxima), nunca da IA.
+  if (ehEmergencia(q)) {
+    const ativa = pickActiveTrip(await listTripsForUser(u), todayIso());
+    return ok(resposta(duvidaEmergencia(q, ativa ?? null)!, ativa ? "reservas" : null));
+  }
   const comum = duvidaComum(q);
   if (comum) return ok(resposta(comum.t, comum.ir ?? null));
   if (!assistenteLiberado(u.id)) return ok(resposta("Muitas perguntas seguidas. Espere uns minutos e pergunte de novo.", null));

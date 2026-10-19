@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import Icon from "@/components/Icon";
 import { api } from "@/lib/client";
+import { telefonesDe, tel, PLANTAO_CONSULAR, PORTAL_CONSULAR } from "@/lib/emergencia";
 import { dayLabel } from "@/lib/format";
 import type { IconName } from "@/lib/icons";
 import { toast } from "@/lib/toast";
@@ -22,15 +23,23 @@ export function resInfo(r: Reservation) {
   return [r.data ? dayLabel(r.data) : null, r.hora, r.info].filter(Boolean).join(" · ");
 }
 
+/** Lugar do roteiro que costuma pedir reserva e ainda não tem uma. */
+export type SugestaoReserva = { poiId: number; nome: string; data: string; hora: string; dia: number };
+
 type Props = {
   tripId: number;
   reservations: Reservation[];
   canEdit: boolean;
-  onAdd: () => void;
+  onAdd: (inicial?: SugestaoReserva) => void;
   onDeleted: (rid: number, days: DayPlan[], version: number) => void;
+  sugestoes: SugestaoReserva[];
+  destino: string;
+  pais: string;
+  paisIso: string | null;
 };
 
-export default function ReservationsTab({ tripId, reservations, canEdit, onAdd, onDeleted }: Props) {
+export default function ReservationsTab({ tripId, reservations, canEdit, onAdd, onDeleted, sugestoes, destino, pais, paisIso }: Props) {
+  const telefones = telefonesDe(paisIso);
   async function del(r: Reservation) {
     if (!confirm("Remover a reserva " + r.nome + "?")) return;
     try {
@@ -45,7 +54,7 @@ export default function ReservationsTab({ tripId, reservations, canEdit, onAdd, 
     <div className="pad" style={{ paddingTop: 14 }}>
       <div className="between" style={{ marginBottom: 12 }}>
         <b style={{ fontSize: 15 }}>{reservations.length} {reservations.length === 1 ? "reserva" : "reservas"} desta viagem</b>
-        {canEdit && <button className="btn btn-sun btn-sm" onClick={onAdd}><Icon name="plus" />Adicionar</button>}
+        {canEdit && <button className="btn btn-sun btn-sm" onClick={() => onAdd()}><Icon name="plus" />Adicionar</button>}
       </div>
       {reservations.length === 0 && (
         <div className="box"><div className="empty" style={{ padding: "14px 6px" }}><div className="ei"><Icon name="ticket" /></div><b>Nenhuma reserva ainda</b>Voo, hotel, ingressos e restaurantes ficam guardados aqui, com os códigos à mão.</div></div>
@@ -68,22 +77,53 @@ export default function ReservationsTab({ tripId, reservations, canEdit, onAdd, 
       <div className="box" style={{ background: "var(--sea-bg)", borderColor: "#BFE6DF", fontSize: 13, color: "var(--sea-ink)" }}>
         Reservas ligadas a um lugar do destino viram compromissos fixos no roteiro. Voo no último dia faz o roteiro terminar 3 horas antes.
       </div>
+
+      {sugestoes.length > 0 && (
+        <div className="res-sug">
+          <b style={{ fontSize: 15 }}>Costumam pedir reserva</b>
+          <small className="muted" style={{ display: "block", marginBottom: 10 }}>Lugares do seu roteiro com fila ou ingresso por horário. Compre no site oficial: revendedores cobram mais.</small>
+          {sugestoes.map((s) => (
+            <div key={s.dia + "-" + s.poiId} className="res">
+              <span className="ri" style={{ background: "var(--sea-bg)", color: "var(--sea-ink)" }}><Icon name="ticket" /></span>
+              <div className="rm">
+                <small>Dia {s.dia + 1} · {dayLabel(s.data)} · {s.hora}</small>
+                <b>{s.nome}</b>
+                <a className="sug-link" href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(s.nome + " " + destino)} target="_blank" rel="noopener noreferrer">Ver no Google Maps (site e horários)</a>
+              </div>
+              {canEdit && <button className="btn btn-ghost btn-sm" onClick={() => onAdd(s)}>Já reservei</button>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {telefones && (
+        <details className="emerg">
+          <summary>Telefones de emergência em {pais}</summary>
+          <ul>
+            {telefones.map((t) => <li key={t.nome}><span>{t.nome}</span><a href={tel(t.numero)}>{t.numero}</a></li>)}
+            <li><span>Plantão consular do Itamaraty (24 h)</span><a href={tel(PLANTAO_CONSULAR)}>{PLANTAO_CONSULAR}</a></li>
+          </ul>
+          <small>Passaporte perdido, assalto ou outra emergência: procure a embaixada ou o consulado do Brasil mais perto (endereços no <a href={PORTAL_CONSULAR} target="_blank" rel="noopener noreferrer">Portal Consular</a>).</small>
+        </details>
+      )}
     </div>
   );
 }
 
-export function AddReservationSheet({ trip, pois, onClose, onSaved }: {
+export function AddReservationSheet({ trip, pois, inicial, onClose, onSaved }: {
   trip: Trip;
   pois: Poi[];
+  /** "Já reservei" numa sugestão: já vem com o lugar, a data e o horário do roteiro. */
+  inicial?: SugestaoReserva;
   onClose: () => void;
   onSaved: (r: Reservation, days: DayPlan[], version: number, note: string) => void;
 }) {
   const [tipo, setTipo] = useState<ReservationType>("Passeio ou ingresso");
-  const [nome, setNome] = useState("");
-  const [data, setData] = useState(trip.inicio);
-  const [hora, setHora] = useState("");
+  const [nome, setNome] = useState(inicial?.nome ?? "");
+  const [data, setData] = useState(inicial?.data ?? trip.inicio);
+  const [hora, setHora] = useState(inicial?.hora ?? "");
   const [codigo, setCodigo] = useState("");
-  const [poiId, setPoiId] = useState<number | "">("");
+  const [poiId, setPoiId] = useState<number | "">(inicial?.poiId ?? "");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const sorted = useMemo(() => pois.slice().sort((a, b) => a.nome.localeCompare(b.nome)), [pois]);

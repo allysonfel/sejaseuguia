@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import TripView from "@/components/trip/TripView";
 import { getUserById, requireTraveler } from "@/lib/auth";
+import { climaDoMes } from "@/lib/clima";
 import { getRules, getTripForUser, listMembers, listReservations, poisForTrip, tripStatus } from "@/lib/data";
 import { daysBetween, todayIso } from "@/lib/format";
 import { appUrl } from "@/lib/mail";
@@ -15,7 +16,10 @@ export default async function Viagem({ params, searchParams }: {
   if (!trip) notFound();
   const sp = await searchParams;
   const owner = trip.access === "owner" ? u : await getUserById(trip.ownerId);
-  const [pois, reservations, members, rules] = await Promise.all([poisForTrip(trip), listReservations([trip.id]), listMembers(trip.id), getRules()]);
+  const [pois, reservations, members, rules, clima] = await Promise.all([
+    poisForTrip(trip), listReservations([trip.id]), listMembers(trip.id), getRules(),
+    climaDoMes(trip.destinationId, trip.hotel.lat, trip.hotel.lng, trip.inicio),
+  ]);
   const today = todayIso();
   const dayFromToday = tripStatus(trip, today) === "Em andamento" ? daysBetween(trip.inicio, today) : 0;
   const dia = sp.dia != null && Number(sp.dia) >= 0 && Number(sp.dia) < trip.days.length ? Number(sp.dia) : dayFromToday;
@@ -29,6 +33,7 @@ export default async function Viagem({ params, searchParams }: {
       pois={pois}
       profile={owner?.profile ?? DEFAULT_PROFILE}
       rules={rules}
+      clima={clima}
       reservations={reservations}
       members={members}
       ownerName={owner?.nome ?? "Organizador"}

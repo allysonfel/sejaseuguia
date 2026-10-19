@@ -284,7 +284,7 @@ export default function TravelMode({ trip, pois, profile, rules, live: viagemAoV
       {festa && <ChuvaConfete />}
       {canEdit && (chat ? (
         <AssistantChat
-          ctx={ctx} days={ed.days} dayIdx={idx} moeda={trip.moeda} onClose={() => setChat(false)}
+          ctx={ctx} days={ed.days} dayIdx={idx} moeda={trip.moeda} pais={trip} onClose={() => setChat(false)}
           onApply={(preview, kind, label) => { ed.commit(preview, kind, "Assistente: " + label); setBanner(label + ". O motor validou horários e trajetos."); setChat(false); }}
         />
       ) : (

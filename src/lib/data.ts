@@ -70,20 +70,20 @@ export async function getRules(): Promise<Rules & { version: number; publishedAt
 }
 
 type TripRow = {
-  id: number; owner_id: number; destination_id: number; destino: string; pais: string; moeda: string; cor1: string; cor2: string; foto_url: string | null; foto_credito: string | null;
+  id: number; owner_id: number; destination_id: number; destino: string; pais: string; pais_iso: string | null; moeda: string; cor1: string; cor2: string; foto_url: string | null; foto_credito: string | null;
   hotel_nome: string; hotel_lat: number; hotel_lng: number; inicio: string; fim: string; pax: number; days: DayPlan[];
   version: number; share_slug: string; share_public: boolean; hide_res: boolean; created_at: Date;
 };
 
 const tripSelect = () => sql`
-  SELECT t.id, t.owner_id, t.destination_id, d.nome AS destino, d.pais, d.moeda, d.cor1, d.cor2, d.foto_url, d.foto_credito,
+  SELECT t.id, t.owner_id, t.destination_id, d.nome AS destino, d.pais, d.pais_iso, d.moeda, d.cor1, d.cor2, d.foto_url, d.foto_credito,
          t.hotel_nome, t.hotel_lat, t.hotel_lng, t.inicio::text AS inicio, t.fim::text AS fim, t.pax, t.days,
          t.version, t.share_slug, t.share_public, t.hide_res, t.created_at
   FROM trips t JOIN destinations d ON d.id = t.destination_id`;
 
 export function mapTrip(r: TripRow): Trip {
   return {
-    id: r.id, ownerId: r.owner_id, destinationId: r.destination_id, destino: r.destino, pais: r.pais, moeda: r.moeda,
+    id: r.id, ownerId: r.owner_id, destinationId: r.destination_id, destino: r.destino, pais: r.pais, paisIso: r.pais_iso, moeda: r.moeda,
     cor1: r.cor1, cor2: r.cor2, fotoUrl: r.foto_url, fotoCredito: r.foto_credito, hotel: { nome: r.hotel_nome, lat: r.hotel_lat, lng: r.hotel_lng },
     inicio: r.inicio, fim: r.fim, pax: r.pax, days: r.days, version: r.version, shareSlug: r.share_slug,
     sharePublic: r.share_public, hideRes: r.hide_res, createdAt: r.created_at.toISOString(),
