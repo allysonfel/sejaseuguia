@@ -39,7 +39,7 @@ export const GUIA = `Telas do app Seja Seu Guia (da agência Lux Viagens e Turis
 - O que é esse lugar? (aba "O que é?"): fotografar um monumento ou prédio e ver a história e curiosidades. Funciona mesmo sem localização (a IA reconhece pela foto); com localização, mostra também o que está perto. Tudo o que for reconhecido fica salvo em "Minhas descobertas", na mesma tela.
 - Explorar lugares: mapa com lugares ao redor do hotel e o que já está no roteiro.
 - Perfil: foto, nome, perfil de viajante, sons de comemoração, ajuda e suporte com a agência (e-mail), sair.
-- Perfil de viajante: companhia, interesses, ritmo, orçamento, como se locomove e o que evitar. Refazer muda as próximas sugestões. Tem um quiz divertido para descobrir o estilo.
+- Perfil de viajante: companhia, interesses, ritmo, horários (acordar cedo, atividades noturnas), orçamento, como se locomove e o que evitar. Refazer muda as próximas sugestões. Tem um quiz divertido para descobrir o estilo.
 - Privacidade e dados: consentimentos, exportar os dados ou pedir a exclusão da conta.
 - Avaliar viagem: depois que a viagem termina, dar nota aos lugares visitados.`;
 

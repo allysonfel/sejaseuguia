@@ -17,12 +17,15 @@ const RITMO: [Ritmo, IconName, string][] = [
   ["Intenso", "bolt", "O máximo que o dia comportar"],
 ];
 const ORC = ["Econômico", "Intermediário", "Premium", "Luxo"];
-const MOB = ["Caminhar", "Transporte público", "Carro", "Táxi ou aplicativo", "Acordar cedo", "Atividades noturnas"];
+// "Acordar cedo" e "Atividades noturnas" continuam guardados em mob (o motor lê de lá),
+// mas aparecem no passo do ritmo: não são meio de locomoção.
+const MOB = ["Caminhar", "Transporte público", "Carro", "Táxi ou aplicativo"];
+const HORARIOS = ["Acordar cedo", "Atividades noturnas"];
 const EVITAR = ["Excesso de caminhada", "Longos deslocamentos", "Filas longas", "Lugares muito turísticos", "Acordar muito cedo", "Atividades caras"];
 const STEPS = [
   { t: "Quem vai viajar?", s: "Isso muda o ritmo, as distâncias e o tipo de lugar." },
   { t: "O que faz seus olhos brilharem?", s: "Escolha quantos quiser. Isso pesa na escolha das atrações." },
-  { t: "Ritmo e orçamento", s: "Define quantas atividades cabem por dia e a faixa de preço." },
+  { t: "Ritmo e orçamento", s: "Define quantas atividades cabem por dia, os horários e a faixa de preço." },
   { t: "Como se locomove e o que evitar?", s: "O motor usa isso para não montar um dia que você não curtiria." },
 ];
 
@@ -36,8 +39,11 @@ export default function Wizard({ initial, done, first, quizHref }: { initial: Pr
   const tog = (k: "int" | "mob" | "evitar", v: string) =>
     setP((x) => ({ ...x, [k]: x[k].includes(v) ? x[k].filter((y) => y !== v) : [...x[k], v] }));
   // "Limpar" só aparece quando há algo marcado naquela lista.
-  const limpar = (k: "int" | "mob" | "evitar") =>
-    p[k].length > 0 && <button className="link wz-limpar" onClick={() => setP((x) => ({ ...x, [k]: [] }))}>Limpar ({p[k].length})</button>;
+  // so: limpa só essas opções da lista (locomoção e horários dividem o mesmo campo).
+  const limpar = (k: "int" | "mob" | "evitar", so?: string[]) => {
+    const n = p[k].filter((v) => !so || so.includes(v)).length;
+    return n > 0 && <button className="link wz-limpar" onClick={() => setP((x) => ({ ...x, [k]: so ? x[k].filter((v) => !so.includes(v)) : [] }))}>Limpar ({n})</button>;
+  };
 
   async function next() {
     if (i < STEPS.length - 1) return setI(i + 1);
@@ -96,7 +102,11 @@ export default function Wizard({ initial, done, first, quizHref }: { initial: Pr
                 <span className="oi"><Icon name={ic} /></span><span><b>{o}</b><small>{d}</small></span>
               </button>
             ))}
-            <div className="sec-t" style={{ marginTop: 8 }}>Orçamento</div>
+            <div className="between" style={{ margin: "8px 0 10px" }}><div className="sec-t" style={{ margin: 0 }}>Horários</div>{limpar("mob", HORARIOS)}</div>
+            <div className="chips">
+              {HORARIOS.map((o) => <button key={o} className={"chip " + (p.mob.includes(o) ? "on" : "")} onClick={() => tog("mob", o)}>{o}</button>)}
+            </div>
+            <div className="sec-t" style={{ marginTop: 18 }}>Orçamento</div>
             <div className="chips">
               {ORC.map((o) => <button key={o} className={"chip " + (p.orc === o ? "on" : "")} onClick={() => setP({ ...p, orc: o })}>{o}</button>)}
             </div>
@@ -104,7 +114,7 @@ export default function Wizard({ initial, done, first, quizHref }: { initial: Pr
         )}
         {i === 3 && (
           <>
-            <div className="wz-acoes">{limpar("mob")}</div>
+            <div className="wz-acoes">{limpar("mob", MOB)}</div>
             <div className="chips">
               {MOB.map((o) => <button key={o} className={"chip " + (p.mob.includes(o) ? "on" : "")} onClick={() => tog("mob", o)}>{o}</button>)}
             </div>
