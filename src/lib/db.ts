@@ -265,6 +265,22 @@ async function createSchema() {
     UPDATE pois SET active = false
       WHERE NOT revisado AND active AND cat = 'Experiência' AND nome ~* '^(teatro|theatro|theatre|théâtre|teatr)'
         AND nome !~* '(amazonas|municipal|da paz|col[oó]n|garnier|scala|nacional|bolshoi|real|massimo|liceu|s[aã]o carlos|[oó]pera)';
+    -- ... e tira esses lugares dos roteiros em andamento ou futuros (viagem passada fica como foi).
+    -- Fica o que tem reserva (fixed) ou já foi marcado como realizado (done).
+    WITH sair AS (
+      SELECT p.id FROM pois p JOIN destinations d ON d.id = p.destination_id
+      WHERE NOT p.revisado AND NOT p.active
+        AND (lower(p.nome) = lower(d.nome) OR (p.cat = 'Experiência' AND p.nome ~* '^(teatro|theatro|theatre|théâtre|teatr)'))
+    )
+    UPDATE trips t SET version = version + 1, days = (
+      SELECT jsonb_agg(jsonb_set(d, '{items}', coalesce((
+        SELECT jsonb_agg(it ORDER BY o) FROM jsonb_array_elements(d->'items') WITH ORDINALITY AS x(it, o)
+        WHERE NOT ((it->>'p')::int IN (SELECT id FROM sair) AND coalesce(it->>'fixed', '') = '' AND coalesce((it->>'done')::boolean, false) = false)
+      ), '[]'::jsonb)) ORDER BY n)
+      FROM jsonb_array_elements(t.days) WITH ORDINALITY AS y(d, n))
+    WHERE t.fim >= current_date AND EXISTS (
+      SELECT 1 FROM jsonb_array_elements(t.days) dd, jsonb_array_elements(dd->'items') ii
+      WHERE (ii->>'p')::int IN (SELECT id FROM sair) AND coalesce(ii->>'fixed', '') = '' AND coalesce((ii->>'done')::boolean, false) = false);
 
     -- Clima típico do mês por destino (média dos últimos anos), buscado uma vez e guardado.
     CREATE TABLE IF NOT EXISTS clima_mes (
