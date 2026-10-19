@@ -258,6 +258,13 @@ async function createSchema() {
     ALTER TABLE pois ADD COLUMN IF NOT EXISTS foto_url TEXT;
     ALTER TABLE pois ADD COLUMN IF NOT EXISTS foto_credito TEXT;
     ALTER TABLE pois ADD COLUMN IF NOT EXISTS foto_buscada_em TIMESTAMPTZ;
+    -- Limpeza de importações antigas (só o que a equipe ainda não revisou): a própria cidade como atração
+    -- ("Salvador" em Salvador) e teatro sem visita guiada (entravam como atração das 10h às 18h).
+    UPDATE pois p SET active = false FROM destinations d
+      WHERE p.destination_id = d.id AND NOT p.revisado AND p.active AND lower(p.nome) = lower(d.nome);
+    UPDATE pois SET active = false
+      WHERE NOT revisado AND active AND cat = 'Experiência' AND nome ~* '^(teatro|theatro|theatre|théâtre|teatr)'
+        AND nome !~* '(amazonas|municipal|da paz|col[oó]n|garnier|scala|nacional|bolshoi|real|massimo|liceu|s[aã]o carlos|[oó]pera)';
 
     -- Clima típico do mês por destino (média dos últimos anos), buscado uma vez e guardado.
     CREATE TABLE IF NOT EXISTS clima_mes (

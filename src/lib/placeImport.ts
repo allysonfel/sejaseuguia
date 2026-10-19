@@ -22,6 +22,12 @@ export type ImportResult = { atracoes: number; restaurantes: number; repetidos: 
 
 type Kind = { cat: string; dur: number; preco: number; indoor: boolean; meal?: boolean; tags: string[]; abre: string; fecha: string };
 
+// Teatro e casa de ópera funcionam com programação: só entram os famosos (com visita guiada,
+// como Teatro Amazonas, Theatro Municipal, Palais Garnier). Fama = páginas na Wikipédia:
+// Teatro Vila Velha tem 2, Teatro da Paz 11, Theatro Municipal de São Paulo 19.
+const TEATRO: Kind = { cat: "Experiência", dur: 60, preco: 1, indoor: true, tags: ["cultura", "arquitetura"], abre: "10:00", fecha: "18:00" };
+const FAMA_MIN_TEATRO = 10;
+
 // Classes do Wikidata que viram lugar de roteiro, em ordem de prioridade:
 // o Coliseu é sítio arqueológico e museu, e deve ser tratado como ruína.
 const KINDS: { q: string[]; k: Kind }[] = [
@@ -31,7 +37,7 @@ const KINDS: { q: string[]; k: Kind }[] = [
   { q: ["Q839954", "Q109607"], k: { cat: "Atração", dur: 75, preco: 2, indoor: false, tags: ["história", "arquitetura"], abre: "09:00", fecha: "18:00" } },
   { q: ["Q23413", "Q16560", "Q57821", "Q1785071"], k: { cat: "Atração", dur: 90, preco: 2, indoor: true, tags: ["história", "arquitetura"], abre: "10:00", fecha: "18:00" } },
   { q: ["Q33506", "Q1007870", "Q207694", "Q16735822", "Q17431399"], k: { cat: "Museu", dur: 90, preco: 2, indoor: true, tags: ["museus", "cultura"], abre: "10:00", fecha: "18:00" } },
-  { q: ["Q24354", "Q153562"], k: { cat: "Experiência", dur: 60, preco: 1, indoor: true, tags: ["cultura", "arquitetura"], abre: "10:00", fecha: "18:00" } },
+  { q: ["Q24354", "Q153562"], k: TEATRO },
   { q: ["Q40080"], k: { cat: "Praia", dur: 150, preco: 0, indoor: false, tags: ["praias", "natureza"], abre: "07:00", fecha: "18:00" } },
   { q: ["Q22698", "Q1107656"], k: { cat: "Parque", dur: 60, preco: 0, indoor: false, tags: ["natureza", "fotografia"], abre: "08:00", fecha: "20:00" } },
   { q: ["Q6017969", "Q12518"], k: { cat: "Atração", dur: 40, preco: 1, indoor: false, tags: ["fotografia", "arquitetura"], abre: "09:00", fecha: "21:00" } },
@@ -345,9 +351,12 @@ export async function importDestination(dest: Destination, raioKm = 8, opts: { a
   const landmarks = await wikidataPlaces(dest, raio, LANDMARKS).catch(() => [] as Cand[]);
   const ids = new Set(typed.map((c) => c.q));
   const ranked = [...typed, ...landmarks.filter((c) => !ids.has(c.q))].sort((x, y) => y.fama - x.fama);
+  // a própria cidade (o Wikidata trata Salvador, com o centro tombado, como patrimônio) não é lugar a visitar
+  nomes.add(norm(dest.nome));
   for (const c of ranked) {
     if (sights.length >= MAX_SIGHTS) break;
     if (nomes.has(norm(c.nome)) || (used.get(c.k.cat) ?? 0) >= (CAPS[c.k.cat] ?? 3)) continue;
+    if (c.k === TEATRO && c.fama < FAMA_MIN_TEATRO) continue;
     nomes.add(norm(c.nome));
     used.set(c.k.cat, (used.get(c.k.cat) ?? 0) + 1);
     sights.push(c);
@@ -408,7 +417,8 @@ export async function importDestination(dest: Destination, raioKm = 8, opts: { a
       nome: s.nome, cat: s.k.cat, bairro: bairroOf(t) || (auto ? dest.nome : ""), lat: s.lat, lng: s.lng, dur: s.k.dur,
       abre: oh?.abre ?? s.k.abre, fecha: oh?.fecha ?? s.k.fecha, preco, indoor: s.k.indoor, meal: s.k.meal ?? false, tags: s.k.tags,
       closedDays: oh?.closedDays ?? [], historia: txt ? txt + " (Fonte: Wikipédia)" : null,
-      tip: s.fama >= 60 ? "Um dos lugares mais visitados da cidade: confira se precisa comprar ingresso com hora marcada." : null,
+      tip: s.k === TEATRO ? "Teatro: a visita guiada tem dias e horários próprios, e os espetáculos seguem a programação. Confira no site antes de ir."
+        : s.fama >= 60 ? "Um dos lugares mais visitados da cidade: confira se precisa comprar ingresso com hora marcada." : null,
       source: s.fonte ?? "Wikidata", estimado: !oh,
       pendente: auto && (s.nomeEstrangeiro || (!txt && s.wiki)) ? { wiki: txt ? null : s.wiki ?? null } : null,
     };

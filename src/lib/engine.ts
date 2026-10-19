@@ -339,27 +339,57 @@ const mealOk = (s: SDay) => s.items.every((i) => !i.poi.meal || i.fixed || (i.in
  * Passada final: muda paradas de posição enquanto isso encurtar o deslocamento
  * sem criar conflito nem tirar o almoço da janela.
  */
+// Acabamento da ordem do dia, com o deslocamento real (minutos) e os horários:
+// 1) leva um lugar para outra posição (o almoço também, se continuar no horário);
+// 2) inverte um trecho inteiro (2-opt): desfaz o "vai e volta" pelo mesmo caminho.
+// Reserva fica onde está. Só aceita o que reduz o deslocamento sem criar aviso.
 function improve(plan: DayPlan, idx: number, ctx: Ctx): DayPlan {
   let cur = plan;
   let best = sched(cur, idx, ctx);
-  for (let pass = 0; pass < 4; pass++) {
+  // almoço fora do horário (o dia empurrou ele para a tarde): primeiro acha a posição em que ele volta
+  // para 11h30 a 14h30, mesmo andando um pouco mais
+  if (!mealOk(best)) {
+    const m = cur.items.findIndex((x) => !x.fixed && ctx.pois[x.p]?.meal);
+    let melhor: { t: DayPlan; s: SDay } | null = null;
+    for (let j = 0; m >= 0 && j < cur.items.length; j++) {
+      if (j === m) continue;
+      const t = clone(cur);
+      const [x] = t.items.splice(m, 1);
+      t.items.splice(j, 0, x);
+      const s = sched(t, idx, ctx);
+      if (mealOk(s) && problems(s) <= problems(best) && (!melhor || s.moveMin < melhor.s.moveMin)) melhor = { t, s };
+    }
+    if (melhor) { cur = melhor.t; best = melhor.s; }
+  }
+  const aceita = (t: DayPlan) => {
+    const s = sched(t, idx, ctx);
+    if (s.moveMin < best.moveMin - 1 && problems(s) <= problems(best) && (mealOk(s) || !mealOk(best))) {
+      cur = t;
+      best = s;
+      return true;
+    }
+    return false;
+  };
+  for (let pass = 0; pass < 12; pass++) {
     let changed = false;
-    for (let i = 0; i < cur.items.length && !changed; i++) {
-      if (cur.items[i].fixed || ctx.pois[cur.items[i].p]?.meal) continue;
-      for (let j = 0; j < cur.items.length; j++) {
+    const n = cur.items.length;
+    for (let i = 0; i < n && !changed; i++) {
+      if (cur.items[i].fixed) continue;
+      for (let j = 0; j < n && !changed; j++) {
         if (j === i) continue;
         const t = clone(cur);
         const [x] = t.items.splice(i, 1);
         t.items.splice(j, 0, x);
-        const s = sched(t, idx, ctx);
-        if (s.moveMin < best.moveMin - 1 && problems(s) <= problems(best) && (mealOk(s) || !mealOk(best))) {
-          cur = t;
-          best = s;
-          changed = true;
-          break;
-        }
+        changed = aceita(t);
       }
     }
+    for (let i = 0; i < n - 1 && !changed; i++)
+      for (let k = i + 1; k < n && !changed; k++) {
+        if (cur.items.slice(i, k + 1).some((x) => x.fixed)) continue;
+        const t = clone(cur);
+        t.items.splice(i, k - i + 1, ...t.items.slice(i, k + 1).reverse());
+        changed = aceita(t);
+      }
     if (!changed) break;
   }
   return cur;
