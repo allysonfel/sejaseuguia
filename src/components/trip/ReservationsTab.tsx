@@ -23,6 +23,9 @@ export function resInfo(r: Reservation) {
   return [r.data ? dayLabel(r.data) : null, r.hora, r.info].filter(Boolean).join(" · ");
 }
 
+/** Reserva ainda sem viagem (Nova viagem): vai junto na criação. */
+export type ReservaNova = { tipo: ReservationType; nome: string; data: string; hora: string; codigo: string; poiId: number | null };
+
 /** Lugar do roteiro que costuma pedir reserva e ainda não tem uma. */
 export type SugestaoReserva = { poiId: number; nome: string; data: string; hora: string; dia: number };
 
@@ -110,13 +113,15 @@ export default function ReservationsTab({ tripId, reservations, canEdit, onAdd, 
   );
 }
 
-export function AddReservationSheet({ trip, pois, inicial, onClose, onSaved }: {
-  trip: Trip;
+export function AddReservationSheet({ trip, pois, inicial, onClose, onSaved, onLocal }: {
+  trip: Pick<Trip, "id" | "inicio">;
   pois: Poi[];
   /** "Já reservei" numa sugestão: já vem com o lugar, a data e o horário do roteiro. */
   inicial?: SugestaoReserva;
   onClose: () => void;
-  onSaved: (r: Reservation, days: DayPlan[], version: number, note: string) => void;
+  onSaved?: (r: Reservation, days: DayPlan[], version: number, note: string) => void;
+  /** Nova viagem: guarda na tela em vez de salvar (a viagem ainda não existe). */
+  onLocal?: (r: ReservaNova) => void;
 }) {
   const [tipo, setTipo] = useState<ReservationType>("Passeio ou ingresso");
   const [nome, setNome] = useState(inicial?.nome ?? "");
@@ -137,13 +142,17 @@ export function AddReservationSheet({ trip, pois, inicial, onClose, onSaved }: {
   }
 
   async function save() {
+    if (onLocal) {
+      onLocal({ tipo, nome: nome.trim(), data, hora, codigo: codigo.trim(), poiId: linkable && poiId ? poiId : null });
+      return;
+    }
     setBusy(true);
     setErr(null);
     try {
       const r = await api<{ reservation: Reservation; days: DayPlan[]; version: number; note: string }>(`/api/trips/${trip.id}/reservations`, {
         body: { tipo, nome, data, hora, codigo, poiId: linkable && poiId ? poiId : null },
       });
-      onSaved(r.reservation, r.days, r.version, r.note);
+      onSaved?.(r.reservation, r.days, r.version, r.note);
     } catch (e) {
       setErr((e as Error).message);
       setBusy(false);
@@ -175,7 +184,7 @@ export function AddReservationSheet({ trip, pois, inicial, onClose, onSaved }: {
           <div className="field"><label>Horário</label><input className="input mono" type="time" value={hora} onChange={(e) => setHora(e.target.value)} /></div>
         </div>
         <div className="field"><label>Código ou localizador</label><input className="input mono" value={codigo} onChange={(e) => setCodigo(e.target.value)} /></div>
-        <button className="btn btn-sun btn-block" onClick={save} disabled={busy || !nome.trim()}>Salvar e ajustar roteiro</button>
+        <button className="btn btn-sun btn-block" onClick={save} disabled={busy || !nome.trim()}>{onLocal ? "Adicionar à viagem" : "Salvar e ajustar roteiro"}</button>
       </div>
     </>
   );

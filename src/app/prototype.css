@@ -618,3 +618,12 @@ select.input{height:38px;border-radius:11px;padding:0 10px;width:auto}
 .emerg li{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
 .emerg li a{font-weight:700;color:var(--ink);white-space:nowrap}
 .emerg small a{color:inherit;text-decoration:underline}
+
+/* Nova viagem: reservas que a pessoa já tem (entram na criação do roteiro) */
+.nv-res{background:var(--sea-bg);border-color:#BFE6DF;color:var(--sea-ink);font-size:13px}
+.nv-res b{display:block;font-size:14px;color:var(--sea-ink)}
+.nv-res small{display:block;color:var(--sea-ink);opacity:.85;margin-top:2px}
+.nv-res .nv-res-add{background:#fff;border:1px solid #BFE6DF;color:var(--sea-ink);flex:none}
+.nv-res .res{margin:10px 0 0;background:#fff}
+.nv-res .res .rm b{color:var(--ink)}
+.nv-res .res .rm small{color:var(--muted);opacity:1}

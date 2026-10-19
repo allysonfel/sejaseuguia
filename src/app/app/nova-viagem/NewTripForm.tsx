@@ -7,9 +7,10 @@ import { createPortal } from "react-dom";
 import Icon from "@/components/Icon";
 import Gui from "@/components/quiz/Gui";
 import TripArt from "@/components/TripArt";
+import { AddReservationSheet, resStyle, type ReservaNova } from "@/components/trip/ReservationsTab";
 import { api } from "@/lib/client";
 import { eligible, travel } from "@/lib/engine";
-import { addDays, daysBetween } from "@/lib/format";
+import { addDays, dayLabel, daysBetween } from "@/lib/format";
 import { somAcerto } from "@/lib/sons";
 import { toast } from "@/lib/toast";
 import { useArrastar } from "@/lib/useArrastar";
@@ -20,7 +21,7 @@ const LeafletMap = dynamic(() => import("@/components/LeafletMap"), { ssr: false
 type Hit = { nome: string; endereco: string; lat: number; lng: number };
 type Busca = { regioes: Regiao[]; cidades: DestinoBusca[]; titulo?: string };
 type Preparo = { status: ImportStatus | null; lugares: number; posicao: number };
-type Atracao = { id: number; nome: string; cat: string; bairro: string; dur: number; dia: number };
+type Atracao = { id: number; nome: string; cat: string; bairro: string; dur: number; dia: number; reservada?: boolean };
 
 // Etapas mostradas enquanto os lugares de um destino novo são importados (o servidor leva ~1 min).
 const ETAPAS_PREPARO: [number, string][] = [
@@ -58,6 +59,9 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
   const [requested, setRequested] = useState(false);
   // Prévia: atrações que o motor escolheu, para a pessoa tirar as que não quer antes de montar.
   const [previa, setPrevia] = useState<Atracao[] | null>(null);
+  // Reservas que a pessoa já tem: vão junto na criação e o roteiro nasce encaixado nelas.
+  const [reservas, setReservas] = useState<ReservaNova[]>([]);
+  const [addRes, setAddRes] = useState(false);
   const [fora, setFora] = useState<Set<number>>(new Set());
   const [carregandoPrevia, setCarregandoPrevia] = useState(false);
   // segundos desde que começou a preparar o destino (barra de progresso estimada)
@@ -105,7 +109,8 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
   }, [destId, destPronto]);
 
   function pickDest(d: DestinoBusca | null) {
-    if (d?.id !== dest?.id) { setHotel(null); setHits(null); setPois([]); setPrep(null); }
+    // trocou o destino: as reservas ficam, mas soltas dos lugares do destino anterior
+    if (d?.id !== dest?.id) { setHotel(null); setHits(null); setPois([]); setPrep(null); setReservas((l) => l.map((r) => ({ ...r, poiId: null }))); }
     setDest(d);
     setRequested(false);
     if (d) { setDestTxt(rotulo(d)); setAchados(null); }
@@ -179,7 +184,7 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
 
   const nDays = daysBetween(ini, fim) + 1;
 
-  const corpo = () => ({ destinationId: dest!.id, inicio: ini, fim, pax, hotel: { nome: hotelNome.trim(), ...hotel! } });
+  const corpo = () => ({ destinationId: dest!.id, inicio: ini, fim, pax, hotel: { nome: hotelNome.trim(), ...hotel! }, reservas });
 
   function validar(): boolean {
     setErr(null);
@@ -402,8 +407,28 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
           <Icon name="edit" />
         </Link>
       </div>
-      <div className="box" style={{ background: "var(--sea-bg)", borderColor: "#BFE6DF", fontSize: 13, color: "var(--sea-ink)" }}>
-        Já tem voo, ingressos ou restaurante reservados? Depois de montar, adicione na aba Reservas: o roteiro se ajusta aos horários.
+      <div className="box nv-res">
+        <div className="between" style={{ gap: 10 }}>
+          <span>
+            <b>Já tem algo reservado?</b>
+            <small>Voo, ingressos ou restaurante: o roteiro já nasce encaixado nos horários.</small>
+          </span>
+          <button className="btn btn-sm nv-res-add" onClick={() => setAddRes(true)}><Icon name="plus" />Adicionar</button>
+        </div>
+        {reservas.map((r, i) => {
+          const [, ic, bg, fg] = resStyle(r.tipo);
+          return (
+            <div key={i} className="res">
+              <span className="ri" style={{ background: bg, color: fg }}><Icon name={ic} /></span>
+              <div className="rm">
+                <small>{r.tipo}</small>
+                <b>{r.nome}</b>
+                <small>{[r.data ? dayLabel(r.data) : null, r.hora].filter(Boolean).join(" · ")}</small>
+              </div>
+              <div className="rm-act"><button onClick={() => setReservas((l) => l.filter((_, k) => k !== i))} title="Remover" aria-label={"Remover reserva " + r.nome}><Icon name="trash" /></button></div>
+            </div>
+          );
+        })}
       </div>
       {err && <div className="err">{err}</div>}
       <button className="btn btn-sun btn-block" style={{ marginTop: 6 }} onClick={revisar} disabled={gen != null || carregandoPrevia} aria-busy={!!dest && !dest.pronto && prep?.status !== "falhou"}>
@@ -428,9 +453,11 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
                   return (
                     <div key={a.id} className={"previa-it" + (tirada ? " fora" : "")}>
                       <span style={{ flex: 1 }}><b>{a.nome}</b><small>{[a.cat, a.bairro, a.dur + " min"].filter(Boolean).join(" · ")}</small></span>
-                      <button className={"btn btn-sm " + (tirada ? "btn-ghost" : "previa-x")} onClick={() => alternar(a.id)} aria-label={(tirada ? "Devolver " : "Tirar ") + a.nome}>
-                        {tirada ? <><Icon name="refresh" />Devolver</> : <Icon name="close" />}
-                      </button>
+                      {a.reservada ? <span className="badge b-sea">Reservado</span> : (
+                        <button className={"btn btn-sm " + (tirada ? "btn-ghost" : "previa-x")} onClick={() => alternar(a.id)} aria-label={(tirada ? "Devolver " : "Tirar ") + a.nome}>
+                          {tirada ? <><Icon name="refresh" />Devolver</> : <Icon name="close" />}
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -444,6 +471,14 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
             </div>
           </div>
         </>,
+        document.querySelector(".app") ?? document.body,
+      )}
+
+      {addRes && createPortal(
+        <AddReservationSheet
+          trip={{ id: 0, inicio: ini }} pois={pois} onClose={() => setAddRes(false)}
+          onLocal={(r) => { setReservas((l) => [...l, r]); setAddRes(false); toast("Reserva adicionada. Ela entra no roteiro ao montar."); }}
+        />,
         document.querySelector(".app") ?? document.body,
       )}
 
