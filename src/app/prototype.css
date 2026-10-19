@@ -627,3 +627,7 @@ select.input{height:38px;border-radius:11px;padding:0 10px;width:auto}
 .nv-res .res{margin:10px 0 0;background:#fff}
 .nv-res .res .rm b{color:var(--ink)}
 .nv-res .res .rm small{color:var(--muted);opacity:1}
+
+/* Perfil de viajante: limpar as opções marcadas de uma lista */
+.wz-acoes{display:flex;justify-content:flex-end;min-height:22px;margin:-8px 0 8px}
+.wz-limpar{font-size:13px;font-weight:600}

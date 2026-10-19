@@ -24,6 +24,8 @@ export function useAssistenteDaViagem(ativo: boolean) {
 
 // Telas com o menu de baixo: o botão fica acima dele.
 const COM_MENU = /^\/app(\/(perfil|descobrir|explorar|roteiro|modo-viagem)|\/viagem\/\d+(\/avaliar|\/modo-viagem)?)?$/;
+// Telas de passo a passo com botões fixos embaixo (perfil de viajante e quiz): o Gui cobria o "Continuar".
+const SEM_ASSISTENTE = /^\/app\/perfil-viajante/;
 const QUICK = ["Como funciona o app?", "Como convido alguém para a viagem?", "Dicas para a minha viagem"];
 
 export default function AssistenteGeral({ children }: { children: React.ReactNode }) {
@@ -33,7 +35,7 @@ export default function AssistenteGeral({ children }: { children: React.ReactNod
   return (
     <Ocultar.Provider value={setOculto}>
       {children}
-      {!oculto && (aberto
+      {!oculto && !SEM_ASSISTENTE.test(path) && (aberto
         ? <Chat path={path} onClose={() => setAberto(false)} />
         : <BotaoAssistente style={COM_MENU.test(path) ? undefined : { bottom: 22 }} onClick={() => setAberto(true)} />)}
     </Ocultar.Provider>

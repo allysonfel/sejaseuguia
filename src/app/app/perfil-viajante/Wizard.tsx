@@ -35,6 +35,9 @@ export default function Wizard({ initial, done, first, quizHref }: { initial: Pr
   const [busy, setBusy] = useState(false);
   const tog = (k: "int" | "mob" | "evitar", v: string) =>
     setP((x) => ({ ...x, [k]: x[k].includes(v) ? x[k].filter((y) => y !== v) : [...x[k], v] }));
+  // "Limpar" só aparece quando há algo marcado naquela lista.
+  const limpar = (k: "int" | "mob" | "evitar") =>
+    p[k].length > 0 && <button className="link wz-limpar" onClick={() => setP((x) => ({ ...x, [k]: [] }))}>Limpar ({p[k].length})</button>;
 
   async function next() {
     if (i < STEPS.length - 1) return setI(i + 1);
@@ -79,9 +82,12 @@ export default function Wizard({ initial, done, first, quizHref }: { initial: Pr
           </button>
         ))}
         {i === 1 && (
+          <>
+          <div className="wz-acoes">{limpar("int")}</div>
           <div className="chips">
             {INT.map((o) => <button key={o} className={"chip " + (p.int.includes(o) ? "on" : "")} onClick={() => tog("int", o)}>{cap(o)}</button>)}
           </div>
+          </>
         )}
         {i === 2 && (
           <>
@@ -98,10 +104,11 @@ export default function Wizard({ initial, done, first, quizHref }: { initial: Pr
         )}
         {i === 3 && (
           <>
+            <div className="wz-acoes">{limpar("mob")}</div>
             <div className="chips">
               {MOB.map((o) => <button key={o} className={"chip " + (p.mob.includes(o) ? "on" : "")} onClick={() => tog("mob", o)}>{o}</button>)}
             </div>
-            <div className="sec-t" style={{ marginTop: 18 }}>O que evitar</div>
+            <div className="between" style={{ margin: "18px 0 10px" }}><div className="sec-t" style={{ margin: 0 }}>O que evitar</div>{limpar("evitar")}</div>
             <div className="chips">
               {EVITAR.map((o) => <button key={o} className={"chip " + (p.evitar.includes(o) ? "on" : "")} onClick={() => tog("evitar", o)}>{o}</button>)}
             </div>
