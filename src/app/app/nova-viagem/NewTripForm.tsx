@@ -2,7 +2,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Icon from "@/components/Icon";
 import Gui from "@/components/quiz/Gui";
@@ -73,6 +73,14 @@ const ETAPAS_PREPARO: [number, string][] = [
   [60, "Quase lá, organizando tudo"],
 ];
 
+const ouvirStorage = (cb: () => void) => {
+  window.addEventListener("storage", cb);
+  return () => window.removeEventListener("storage", cb);
+};
+const lerStorage = (k: string) => {
+  try { return localStorage.getItem(k); } catch { return null; }
+};
+
 const rotulo = (d: Destination) => d.nome + ", " + (d.uf ? d.uf + ", " : "") + d.pais;
 
 export default function NewTripForm({ destinations, profile, today }: { destinations: Destination[]; profile: Profile; today: string }) {
@@ -103,6 +111,15 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
   // Reservas que a pessoa já tem: vão junto na criação e o roteiro nasce encaixado nelas.
   const [reservas, setReservas] = useState<ReservaNova[]>([]);
   const [addRes, setAddRes] = useState(false);
+  // Sugerir restaurantes e cafés no roteiro (tem quem só quer os pontos turísticos). Fica lembrado no aparelho.
+  const semSalvo = useSyncExternalStore(ouvirStorage, () => lerStorage("ssg-sem-restaurantes"), () => null);
+  const [escolha, setEscolha] = useState<boolean | null>(null);
+  const comRestaurantes = escolha ?? semSalvo !== "1";
+  const alternarRestaurantes = () => {
+    const v = !comRestaurantes;
+    setEscolha(v);
+    try { if (v) localStorage.removeItem("ssg-sem-restaurantes"); else localStorage.setItem("ssg-sem-restaurantes", "1"); } catch {}
+  };
   const [fora, setFora] = useState<Set<number>>(new Set());
   const [carregandoPrevia, setCarregandoPrevia] = useState(false);
   // segundos desde que começou a preparar o destino (barra de progresso estimada)
@@ -225,7 +242,7 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
 
   const nDays = daysBetween(ini, fim) + 1;
 
-  const corpo = () => ({ destinationId: dest!.id, inicio: ini, fim, pax, hotel: { nome: hotelNome.trim(), ...hotel! }, reservas });
+  const corpo = () => ({ destinationId: dest!.id, inicio: ini, fim, pax, hotel: { nome: hotelNome.trim(), ...hotel! }, reservas, restaurantes: comRestaurantes });
 
   function validar(): boolean {
     setErr(null);
@@ -448,6 +465,14 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
           <Icon name="edit" />
         </Link>
       </div>
+      <button className="opt nv-rest" onClick={alternarRestaurantes} aria-pressed={comRestaurantes}>
+        <span className="oi"><Icon name="fork" /></span>
+        <span style={{ flex: 1 }}>
+          <b>Sugerir restaurantes e cafés</b>
+          <small>{comRestaurantes ? "O roteiro inclui onde comer perto das atrações" : "Só pontos turísticos: você escolhe onde comer"}</small>
+        </span>
+        <span className={"toggle" + (comRestaurantes ? " on" : "")} />
+      </button>
       <div className="box nv-res">
         <div className="between" style={{ gap: 10 }}>
           <span>
@@ -485,7 +510,7 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
           <div className="sheet previa" role="dialog" aria-label="Confira as atrações">
             <div className="grab" />
             <h3 className="serif">Confira as atrações</h3>
-            <p className="muted">Toque numa atração para ver o que é. Já conhece algum lugar ou não quer ir? Tire da lista. O app coloca outra atração no lugar quando couber. Restaurantes e cafés entram sozinhos.</p>
+            <p className="muted">Toque numa atração para ver o que é. Já conhece algum lugar ou não quer ir? Tire da lista. O app coloca outra atração no lugar quando couber.{comRestaurantes ? " Restaurantes e cafés entram sozinhos." : ""}</p>
             {[...new Set(previa.map((a) => a.dia))].map((dia) => (
               <div key={dia}>
                 <div className="previa-dia">Dia {dia}</div>

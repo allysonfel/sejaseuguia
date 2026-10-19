@@ -16,6 +16,8 @@ type Body = {
   previa?: boolean;
   /** atrações que a pessoa tirou na prévia (ex.: já conhece o destino) */
   excluir?: number[];
+  /** false: só pontos turísticos, sem restaurante nem café sugerido (reserva de restaurante continua) */
+  restaurantes?: boolean;
   /** reservas que a pessoa já tem: o roteiro nasce encaixado nelas */
   reservas?: { tipo: string; nome: string; data: string; hora: string; codigo: string; poiId: number }[];
 };
@@ -74,7 +76,9 @@ export async function POST(req: Request) {
   if (pois.length < 3) return fail(dest.nome + " ainda tem poucos lugares cadastrados para montar um roteiro.");
   const ctx = {
     pois: Object.fromEntries(pois.map((p) => [p.id, p])),
-    hotel, profile: u.profile ?? DEFAULT_PROFILE, rules: await getRules(), inicio,
+    hotel, profile: u.profile ?? DEFAULT_PROFILE, inicio,
+    // Sem restaurantes: o motor não põe refeição na montagem (as reorganizações depois já não põem).
+    rules: { ...(await getRules()), ...(b.restaurantes === false ? { almoco: false } : {}) },
   };
   const g = generate({ ctx, nDays: n, forced, lastDayEnd: lastDayEnd(periodo, reservas as Reservation[]), ratings: await userRatings(u) });
 

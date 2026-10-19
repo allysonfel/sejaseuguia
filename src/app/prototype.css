@@ -640,3 +640,4 @@ select.input{height:38px;border-radius:11px;padding:0 10px;width:auto}
 /* Perfil de viajante: limpar as opções marcadas de uma lista */
 .wz-acoes{display:flex;justify-content:flex-end;min-height:22px;margin:-8px 0 8px}
 .wz-limpar{font-size:13px;font-weight:600}
+.nv-rest{margin:0 0 14px;width:100%;text-align:left}
