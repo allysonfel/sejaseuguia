@@ -437,7 +437,16 @@ h1,h2,h3{font-family:var(--serif);font-weight:700;letter-spacing:-.01em;line-hei
 .sheet.previa h3{font-size:22px;margin-bottom:4px}
 .sheet.previa>p{font-size:13px;margin-bottom:6px}
 .previa-dia{font-weight:800;font-size:13px;color:var(--navy3);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.04em}
-.previa-it{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.previa-it{padding:10px 0;border-bottom:1px solid var(--line)}
+.previa-lin{display:flex;align-items:center;gap:10px}
+.previa-info{flex:1;min-width:0;display:flex;align-items:center;gap:10px;text-align:left;color:var(--muted)}
+.previa-info b,.previa-info small{overflow:hidden;text-overflow:ellipsis}
+.previa-foto{width:48px;height:48px;border-radius:12px;flex:none;background:var(--bg) center/cover no-repeat;display:grid;place-items:center;color:var(--faint)}
+.previa-it.fora .previa-foto{opacity:.4}
+.previa-resumo{margin:10px 0 2px}
+.previa-resumo p{font-size:13.5px;line-height:1.55;color:var(--ink)}
+.previa-foto-g{position:relative;height:170px;border-radius:14px;background:var(--bg) center/cover no-repeat;margin-bottom:10px;overflow:hidden}
+.previa-foto-g .foto-cred{position:absolute;right:8px;bottom:6px;font-size:10.5px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7);max-width:90%;text-align:right}
 .previa-it b{display:block;font-size:14.5px}
 .previa-it small{color:var(--muted);font-size:12px}
 .previa-it.fora b{text-decoration:line-through;color:var(--faint)}

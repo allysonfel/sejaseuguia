@@ -37,10 +37,15 @@ async function wd<T>(params: Record<string, string>, tentativa = 1): Promise<T> 
   }
 }
 
-export async function buscarFotoDestino(nome: string, lat: number, lng: number): Promise<FotoDestino | null> {
+export const buscarFotoDestino = (nome: string, lat: number, lng: number) => buscarFoto(nome, lat, lng, 40, LARGURA);
+
+/** Mesma busca para um lugar (atração): raio curto, para não pegar homônimo do outro lado da cidade. */
+export const buscarFotoLugar = (nome: string, lat: number, lng: number) => buscarFoto(nome, lat, lng, 1.5, 640);
+
+async function buscarFoto(nome: string, lat: number, lng: number, raioKm: number, largura: number): Promise<FotoDestino | null> {
   if (!nome.trim()) return null;
   try {
-    // 1) busca pelo nome (rápida, ordenada por relevância); 2) fica com o primeiro que está a até 40 km do centro.
+    // 1) busca pelo nome (rápida, ordenada por relevância); 2) fica com o primeiro que está dentro do raio.
     const busca = await wd<{ search?: { id: string }[] }>({ action: "wbsearchentities", search: nome.trim(), language: "pt", uselang: "pt", type: "item", limit: "10" });
     const ids = (busca.search ?? []).map((x) => x.id);
     if (!ids.length) return null;
@@ -48,12 +53,12 @@ export async function buscarFotoDestino(nome: string, lat: number, lng: number):
     for (const id of ids) {
       const c = ents.entities?.[id]?.claims ?? {};
       const pos = c.P625?.[0]?.mainsnak?.datavalue?.value as { latitude?: number; longitude?: number } | undefined;
-      if (pos?.latitude == null || pos.longitude == null || km({ lat, lng }, { lat: pos.latitude, lng: pos.longitude }) > 40) continue;
+      if (pos?.latitude == null || pos.longitude == null || km({ lat, lng }, { lat: pos.latitude, lng: pos.longitude }) > raioKm) continue;
       const arquivos = (p: string) => (c[p] ?? []).map((x) => x.mainsnak?.datavalue?.value).filter((v): v is string => typeof v === "string");
       const fotos = arquivos("P18"), banner = arquivos("P948")[0];
       const arquivo = fotos.find((a) => !colagem(a)) || banner || fotos[0];
       if (!arquivo) continue;
-      return { url: `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(arquivo)}?width=${LARGURA}`, credito: await credito(arquivo) };
+      return { url: `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(arquivo)}?width=${largura}`, credito: await credito(arquivo) };
     }
     return null;
   } catch (e) {

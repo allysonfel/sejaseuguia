@@ -21,7 +21,48 @@ const LeafletMap = dynamic(() => import("@/components/LeafletMap"), { ssr: false
 type Hit = { nome: string; endereco: string; lat: number; lng: number };
 type Busca = { regioes: Regiao[]; cidades: DestinoBusca[]; titulo?: string };
 type Preparo = { status: ImportStatus | null; lugares: number; posicao: number };
-type Atracao = { id: number; nome: string; cat: string; bairro: string; dur: number; dia: number; reservada?: boolean };
+type Atracao = { id: number; nome: string; cat: string; bairro: string; dur: number; dia: number; reservada?: boolean; resumo: string | null };
+type Foto = { url: string | null; credito: string | null };
+
+// Fotos já pedidas nesta visita (abrir a prévia de novo não busca outra vez).
+const fotosCache = new Map<number, Promise<Foto>>();
+const fotoDe = (id: number) => {
+  if (!fotosCache.has(id)) fotosCache.set(id, api<Foto>("/api/pois/" + id + "/foto", { method: "GET" }).catch(() => ({ url: null, credito: null })));
+  return fotosCache.get(id)!;
+};
+
+/** Uma atração da prévia: foto pequena e, ao tocar, o resumo do que é o lugar. */
+function ItemPrevia({ a, tirada, onAlternar }: { a: Atracao; tirada: boolean; onAlternar: () => void }) {
+  const [foto, setFoto] = useState<Foto | null>(null);
+  const [aberto, setAberto] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    fotoDe(a.id).then((f) => vivo && setFoto(f));
+    return () => { vivo = false; };
+  }, [a.id]);
+  return (
+    <div className={"previa-it" + (tirada ? " fora" : "") + (aberto ? " aberto" : "")}>
+      <div className="previa-lin">
+        <button className="previa-info" onClick={() => setAberto(!aberto)} aria-expanded={aberto} aria-label={(aberto ? "Fechar o resumo de " : "Ver o que é ") + a.nome}>
+          <span className="previa-foto" style={foto?.url ? { backgroundImage: `url("${foto.url}")` } : undefined}>{foto && !foto.url && <Icon name="landmark" />}</span>
+          <span style={{ flex: 1, minWidth: 0 }}><b>{a.nome}</b><small>{[a.cat, a.bairro, a.dur + " min"].filter(Boolean).join(" · ")}</small></span>
+          <Icon name={aberto ? "up" : "down"} />
+        </button>
+        {a.reservada ? <span className="badge b-sea">Reservado</span> : (
+          <button className={"btn btn-sm " + (tirada ? "btn-ghost" : "previa-x")} onClick={onAlternar} aria-label={(tirada ? "Devolver " : "Tirar ") + a.nome}>
+            {tirada ? <><Icon name="refresh" />Devolver</> : <Icon name="close" />}
+          </button>
+        )}
+      </div>
+      {aberto && (
+        <div className="previa-resumo">
+          {foto?.url && <div className="previa-foto-g" style={{ backgroundImage: `url("${foto.url}")` }}>{foto.credito && <small className="foto-cred">{foto.credito}</small>}</div>}
+          <p>{a.resumo ?? "Ainda não temos um resumo deste lugar. Ele entrou pelo seu perfil e pela localização perto do hotel."}</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Etapas mostradas enquanto os lugares de um destino novo são importados (o servidor leva ~1 min).
 const ETAPAS_PREPARO: [number, string][] = [
@@ -444,23 +485,13 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
           <div className="sheet previa" role="dialog" aria-label="Confira as atrações">
             <div className="grab" />
             <h3 className="serif">Confira as atrações</h3>
-            <p className="muted">Já conhece algum lugar ou não quer ir? Tire da lista. O app coloca outra atração no lugar quando couber. Restaurantes e cafés entram sozinhos.</p>
+            <p className="muted">Toque numa atração para ver o que é. Já conhece algum lugar ou não quer ir? Tire da lista. O app coloca outra atração no lugar quando couber. Restaurantes e cafés entram sozinhos.</p>
             {[...new Set(previa.map((a) => a.dia))].map((dia) => (
               <div key={dia}>
                 <div className="previa-dia">Dia {dia}</div>
-                {previa.filter((a) => a.dia === dia).map((a) => {
-                  const tirada = fora.has(a.id);
-                  return (
-                    <div key={a.id} className={"previa-it" + (tirada ? " fora" : "")}>
-                      <span style={{ flex: 1 }}><b>{a.nome}</b><small>{[a.cat, a.bairro, a.dur + " min"].filter(Boolean).join(" · ")}</small></span>
-                      {a.reservada ? <span className="badge b-sea">Reservado</span> : (
-                        <button className={"btn btn-sm " + (tirada ? "btn-ghost" : "previa-x")} onClick={() => alternar(a.id)} aria-label={(tirada ? "Devolver " : "Tirar ") + a.nome}>
-                          {tirada ? <><Icon name="refresh" />Devolver</> : <Icon name="close" />}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+                {previa.filter((a) => a.dia === dia).map((a) => (
+                  <ItemPrevia key={a.id} a={a} tirada={fora.has(a.id)} onAlternar={() => alternar(a.id)} />
+                ))}
               </div>
             ))}
             <div className="previa-pe">

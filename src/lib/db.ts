@@ -254,6 +254,10 @@ async function createSchema() {
     -- nome que veio dos dados abertos (antes da tradução) e o que falta a IA de texto fazer
     ALTER TABLE pois ADD COLUMN IF NOT EXISTS nome_original TEXT;
     ALTER TABLE pois ADD COLUMN IF NOT EXISTS pendente_ia JSONB;
+    -- foto do lugar (Wikidata/Commons), buscada na primeira vez que alguém vê o lugar na prévia
+    ALTER TABLE pois ADD COLUMN IF NOT EXISTS foto_url TEXT;
+    ALTER TABLE pois ADD COLUMN IF NOT EXISTS foto_credito TEXT;
+    ALTER TABLE pois ADD COLUMN IF NOT EXISTS foto_buscada_em TIMESTAMPTZ;
 
     -- Clima típico do mês por destino (média dos últimos anos), buscado uma vez e guardado.
     CREATE TABLE IF NOT EXISTS clima_mes (

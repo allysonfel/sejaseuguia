@@ -81,7 +81,7 @@ export async function POST(req: Request) {
   if (b.previa) {
     // Só as atrações (refeições o app escolhe sozinho), na ordem dos dias.
     const atracoes = g.days.flatMap((d, i) =>
-      d.items.map((it) => ctx.pois[it.p]).filter((p) => p && !p.meal).map((p) => ({ id: p.id, nome: p.nome, cat: p.cat, bairro: p.bairro, dur: p.dur, dia: i + 1, reservada: reservados.has(p.id) })),
+      d.items.map((it) => ctx.pois[it.p]).filter((p) => p && !p.meal).map((p) => ({ id: p.id, nome: p.nome, cat: p.cat, bairro: p.bairro, dur: p.dur, dia: i + 1, reservada: reservados.has(p.id), resumo: p.historia ?? p.tip ?? null })),
     );
     return ok({ atracoes });
   }
