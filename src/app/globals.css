@@ -11,6 +11,11 @@ select.input.full{width:100%;height:48px;border-radius:14px}
 .lmap{width:100%;height:100%;background:#EDF1F7;isolation:isolate} /* prende os z-index do Leaflet (400+) dentro do mapa, sem cobrir a barra de abas */
 .map-box .lmap{height:300px}
 .pz .lmap{height:150px}
+/* hospedagem não encontrada: o mapa fica em destaque esperando o toque */
+.pz-marcando{border:2px solid var(--sun);box-shadow:0 0 0 4px var(--sun-bg)}
+.pz-marcando .lmap{cursor:crosshair}
+.near.hotel-manual{border-top:1px dashed var(--line)}
+.near.hotel-manual .li-ic{background:var(--sun-bg);color:var(--navy)}
 .explore .lmap{position:absolute;inset:0}
 .leaflet-container{font-family:var(--sans)}
 .leaflet-div-icon{background:none;border:0}

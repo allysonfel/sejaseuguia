@@ -101,6 +101,9 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [searching, setSearching] = useState(false);
   const hotelBusca = useRef(0);
+  // Hospedagem que a busca não achou: a pessoa marca no mapa (pedido do cliente).
+  const [marcando, setMarcando] = useState(false);
+  const mapaHotel = useRef<HTMLDivElement>(null);
   const [pax, setPax] = useState(2);
   const [pois, setPois] = useState<Poi[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -229,8 +232,18 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
     setHotel({ lat: h.lat, lng: h.lng });
     if (!hotelNome.trim() || hotelNome.trim().length < h.nome.length) setHotelNome(h.nome);
     setHits(null);
+    setMarcando(false);
     hotelBusca.current++;
     setSearching(false);
+  }
+  function marcarNoMapa() {
+    setHits(null);
+    hotelBusca.current++;
+    setSearching(false);
+    setHotel(null);
+    setMarcando(true);
+    // rola depois que a lista fecha (antes, a altura ainda é a da lista)
+    setTimeout(() => mapaHotel.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
   }
 
   // quantos lugares do perfil ficam a até 20 min do hotel
@@ -416,30 +429,35 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
           )}
           {hits && (
             <div className="box" style={{ padding: "2px 14px", marginTop: 8 }}>
-              {hits.length === 0 && <div className="near"><small className="muted">Nada encontrado. Toque no mapa para marcar o lugar.</small></div>}
+              {hits.length === 0 && <div className="near"><small className="muted">Nada encontrado com esse nome.</small></div>}
               {hits.map((h, i) => (
                 <button key={i} className="near" onClick={() => choose(h)}>
                   <span className="li-ic"><Icon name="bed" /></span>
                   <span className="li-m"><b>{h.nome}</b><small>{h.endereco}</small></span>
                 </button>
               ))}
+              <button className="near hotel-manual" onClick={marcarNoMapa}>
+                <span className="li-ic"><Icon name="pin" /></span>
+                <span className="li-m"><b>Não encontrei, marcar no mapa</b><small>Fica com o nome “{hotelNome.trim()}” e você toca onde ela fica</small></span>
+              </button>
             </div>
           )}
-          <div className="pz">
+          <div className={"pz" + (marcando && !hotel ? " pz-marcando" : "")} ref={mapaHotel}>
             <LeafletMap
               center={hotel ?? dest}
               zoom={hotel ? 14 : 12}
               fitKey={(hotel?.lat ?? 0) + ":" + dest.id}
               markers={hotel ? [{ key: "h", kind: "hotel", ...hotel }] : []}
               radiusKm={hotel ? 1.5 : undefined}
-              onMapClick={(p) => { setHotel(p); if (!hotelNome.trim()) setHotelNome("Minha hospedagem"); }}
+              onMapClick={(p) => { setHotel(p); setMarcando(false); setHits(null); if (!hotelNome.trim()) setHotelNome("Minha hospedagem"); }}
             />
             <div className="cap">
-              <Icon name="star" />
+              <Icon name={marcando && !hotel ? "pin" : "star"} />
               <span>
                 {hotel && near != null ? (
                   <>Tudo parte daqui. Encontramos <b style={{ color: "var(--ink)" }}>{near} lugares</b> do seu perfil a até 20 minutos do hotel.</>
-                ) : "Busque o hotel ou toque no mapa para marcar onde vai ficar."}
+                ) : marcando ? <b style={{ color: "var(--ink)" }}>Toque no mapa onde fica “{hotelNome.trim() || "sua hospedagem"}”. Dá para aproximar com os dedos.</b>
+                : "Busque o hotel ou toque no mapa para marcar onde vai ficar."}
               </span>
             </div>
           </div>
