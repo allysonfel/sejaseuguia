@@ -249,7 +249,8 @@ const MAX_POR_DIA: Record<string, number> = { Praia: 1 };
 export function generate({ ctx, nDays, forced, lastDayEnd, ratings = {} }: GenerateInput): GenerateResult {
   const { profile: prof, rules: r } = ctx;
   const perDay = r.porRitmo[prof.ritmo] ?? 5;
-  const start = prof.mob.includes("Acordar cedo") ? 540 : prof.evitar.includes("Acordar muito cedo") ? 600 : 570;
+  // Horário intermediário: 9h30 mesmo marcando "evitar acordar muito cedo".
+  const start = prof.mob.includes("Acordar cedo") ? 540 : prof.mob.includes("Horário intermediário") ? 570 : prof.evitar.includes("Acordar muito cedo") ? 600 : 570;
   const cand = Object.values(ctx.pois).filter((p) => eligible(p, ctx));
   const sc = new Map(cand.map((p) => [p.id, score(p, ctx, ratings)]));
   const forcedIds = new Set(forced.map((f) => f.poiId));

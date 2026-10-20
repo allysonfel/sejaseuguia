@@ -135,6 +135,8 @@ export function buildProfile(answers: QuizAnswers): Profile {
   }
   p.int = uniq(p.int);
   p.mob = uniq(p.mob);
+  // Horário intermediário não combina com madrugar nem com noite.
+  if (p.mob.includes("Acordar cedo") || p.mob.includes("Atividades noturnas")) p.mob = p.mob.filter((m) => m !== "Horário intermediário");
   // Quem madruga de propósito não está evitando acordar cedo.
   p.evitar = uniq(p.evitar).filter((e) => !(e === "Acordar muito cedo" && p.mob.includes("Acordar cedo")));
   return p;

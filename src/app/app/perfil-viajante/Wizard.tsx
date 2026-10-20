@@ -17,10 +17,12 @@ const RITMO: [Ritmo, IconName, string][] = [
   ["Intenso", "bolt", "O máximo que o dia comportar"],
 ];
 const ORC = ["Econômico", "Intermediário", "Premium", "Luxo"];
-// "Acordar cedo" e "Atividades noturnas" continuam guardados em mob (o motor lê de lá),
-// mas aparecem no passo do ritmo: não são meio de locomoção.
+// Os horários continuam guardados em mob (o motor lê de lá), mas aparecem no passo
+// do ritmo: não são meio de locomoção. "Horário intermediário" (começa 9h30, sem vida
+// noturna) exclui os outros dois; "Acordar cedo" e "Atividades noturnas" combinam.
 const MOB = ["Caminhar", "Transporte público", "Carro", "Táxi ou aplicativo"];
-const HORARIOS = ["Acordar cedo", "Atividades noturnas"];
+const INTERMEDIARIO = "Horário intermediário";
+const HORARIOS = ["Acordar cedo", INTERMEDIARIO, "Atividades noturnas"];
 const EVITAR = ["Excesso de caminhada", "Longos deslocamentos", "Filas longas", "Lugares muito turísticos", "Acordar muito cedo", "Atividades caras"];
 const STEPS = [
   { t: "Quem vai viajar?", s: "Isso muda o ritmo, as distâncias e o tipo de lugar." },
@@ -38,6 +40,12 @@ export default function Wizard({ initial, done, first, quizHref }: { initial: Pr
   const [busy, setBusy] = useState(false);
   const tog = (k: "int" | "mob" | "evitar", v: string) =>
     setP((x) => ({ ...x, [k]: x[k].includes(v) ? x[k].filter((y) => y !== v) : [...x[k], v] }));
+  const togHorario = (v: string) =>
+    setP((x) => {
+      if (x.mob.includes(v)) return { ...x, mob: x.mob.filter((y) => y !== v) };
+      const fora = v === INTERMEDIARIO ? HORARIOS : [INTERMEDIARIO];
+      return { ...x, mob: [...x.mob.filter((y) => !fora.includes(y)), v] };
+    });
   // "Limpar" só aparece quando há algo marcado naquela lista.
   // so: limpa só essas opções da lista (locomoção e horários dividem o mesmo campo).
   const limpar = (k: "int" | "mob" | "evitar", so?: string[]) => {
@@ -104,7 +112,7 @@ export default function Wizard({ initial, done, first, quizHref }: { initial: Pr
             ))}
             <div className="between" style={{ margin: "8px 0 10px" }}><div className="sec-t" style={{ margin: 0 }}>Horários</div>{limpar("mob", HORARIOS)}</div>
             <div className="chips">
-              {HORARIOS.map((o) => <button key={o} className={"chip " + (p.mob.includes(o) ? "on" : "")} onClick={() => tog("mob", o)}>{o}</button>)}
+              {HORARIOS.map((o) => <button key={o} className={"chip " + (p.mob.includes(o) ? "on" : "")} onClick={() => togHorario(o)}>{o}</button>)}
             </div>
             <div className="sec-t" style={{ marginTop: 18 }}>Orçamento</div>
             <div className="chips">
