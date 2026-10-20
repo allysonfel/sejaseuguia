@@ -22,11 +22,10 @@ export type ImportResult = { atracoes: number; restaurantes: number; repetidos: 
 
 type Kind = { cat: string; dur: number; preco: number; indoor: boolean; meal?: boolean; tags: string[]; abre: string; fecha: string };
 
-// Teatro e casa de ópera funcionam com programação: só entram os famosos (com visita guiada,
-// como Teatro Amazonas, Theatro Municipal, Palais Garnier). Fama = páginas na Wikipédia:
-// Teatro Vila Velha tem 2, Teatro da Paz 11, Theatro Municipal de São Paulo 19.
+// Teatro e casa de ópera funcionam com programação: entram marcados como "pede reserva"
+// (o app avisa para agendar a visita ou o espetáculo antes de ir).
 const TEATRO: Kind = { cat: "Experiência", dur: 60, preco: 1, indoor: true, tags: ["cultura", "arquitetura"], abre: "10:00", fecha: "18:00" };
-const FAMA_MIN_TEATRO = 10;
+export const DICA_TEATRO = "Precisa agendar: a visita e os espetáculos seguem a programação do teatro. Veja os dias e horários no site e agende antes de ir.";
 
 // Classes do Wikidata que viram lugar de roteiro, em ordem de prioridade:
 // o Coliseu é sítio arqueológico e museu, e deve ser tratado como ruína.
@@ -284,6 +283,8 @@ type Draft = {
   nome: string; cat: string; bairro: string; lat: number; lng: number; dur: number; abre: string; fecha: string; preco: number;
   indoor: boolean; meal: boolean; tags: string[]; closedDays: number[]; historia: string | null; tip: string | null; source: string;
   estimado: boolean;
+  /** pede reserva ou agendamento (teatro) */
+  reserva: boolean;
   /** automático: nome a traduzir e/ou história a resumir da Wikipédia em inglês (feito depois, por traduzirPendentes) */
   pendente: { wiki: string | null } | null;
 };
@@ -356,7 +357,6 @@ export async function importDestination(dest: Destination, raioKm = 8, opts: { a
   for (const c of ranked) {
     if (sights.length >= MAX_SIGHTS) break;
     if (nomes.has(norm(c.nome)) || (used.get(c.k.cat) ?? 0) >= (CAPS[c.k.cat] ?? 3)) continue;
-    if (c.k === TEATRO && c.fama < FAMA_MIN_TEATRO) continue;
     nomes.add(norm(c.nome));
     used.set(c.k.cat, (used.get(c.k.cat) ?? 0) + 1);
     sights.push(c);
@@ -417,7 +417,8 @@ export async function importDestination(dest: Destination, raioKm = 8, opts: { a
       nome: s.nome, cat: s.k.cat, bairro: bairroOf(t) || (auto ? dest.nome : ""), lat: s.lat, lng: s.lng, dur: s.k.dur,
       abre: oh?.abre ?? s.k.abre, fecha: oh?.fecha ?? s.k.fecha, preco, indoor: s.k.indoor, meal: s.k.meal ?? false, tags: s.k.tags,
       closedDays: oh?.closedDays ?? [], historia: txt ? txt + " (Fonte: Wikipédia)" : null,
-      tip: s.k === TEATRO ? "Teatro: a visita guiada tem dias e horários próprios, e os espetáculos seguem a programação. Confira no site antes de ir."
+      reserva: s.k === TEATRO,
+      tip: s.k === TEATRO ? DICA_TEATRO
         : s.fama >= 60 ? "Um dos lugares mais visitados da cidade: confira se precisa comprar ingresso com hora marcada." : null,
       source: s.fonte ?? "Wikidata", estimado: !oh,
       pendente: auto && (s.nomeEstrangeiro || (!txt && s.wiki)) ? { wiki: txt ? null : s.wiki ?? null } : null,
@@ -447,7 +448,7 @@ export async function importDestination(dest: Destination, raioKm = 8, opts: { a
         const oh = parseOpeningHours(t.opening_hours);
         drafts.push({
           nome: t.name.slice(0, 120), cat: "Restaurante", bairro: bairroOf(t) || a.bairro, ...coord(best), dur: 75,
-          abre: oh?.abre ?? "12:00", fecha: oh?.fecha ?? "23:00", preco: 2, indoor: true, meal: true,
+          abre: oh?.abre ?? "12:00", fecha: oh?.fecha ?? "23:00", preco: 2, indoor: true, meal: true, reserva: false,
           tags: ["gastronomia", ...(isLocal(t) ? ["experiências locais"] : [])], closedDays: oh?.closedDays ?? [], historia: null,
           tip: "Perto de " + a.nome + (auto ? "." : ". Confira preço e horário antes de liberar."), source: "OpenStreetMap", estimado: !oh,
           pendente: auto && !t["name:pt"] && !["brasil", "portugal"].includes(norm(dest.pais)) ? { wiki: null } : null,
@@ -491,7 +492,7 @@ export async function importDestination(dest: Destination, raioKm = 8, opts: { a
       INSERT INTO pois (destination_id, nome, cat, bairro, lat, lng, dur, abre, fecha, preco, reserva, indoor, meal, tags,
                         closed_days, tip, historia, source, active, revisado, horario_estimado, nome_original, pendente_ia)
       VALUES (${dest.id}, ${d.nome}, ${d.cat}, ${d.bairro}, ${d.lat}, ${d.lng}, ${d.dur}, ${d.abre}, ${d.fecha}, ${d.preco},
-              false, ${d.indoor}, ${d.meal}, ${d.tags}, ${d.closedDays}, ${d.tip}, ${d.historia}, ${d.source}, ${auto}, ${!auto}, ${d.estimado},
+              ${d.reserva}, ${d.indoor}, ${d.meal}, ${d.tags}, ${d.closedDays}, ${d.tip}, ${d.historia}, ${d.source}, ${auto}, ${!auto}, ${d.estimado},
               ${d.pendente ? d.nome : null}, ${d.pendente ? sql.json(d.pendente) : null})`;
   }
   const rest = fresh.filter((d) => d.meal).length;

@@ -21,7 +21,7 @@ const LeafletMap = dynamic(() => import("@/components/LeafletMap"), { ssr: false
 type Hit = { nome: string; endereco: string; lat: number; lng: number };
 type Busca = { regioes: Regiao[]; cidades: DestinoBusca[]; titulo?: string };
 type Preparo = { status: ImportStatus | null; lugares: number; posicao: number };
-type Atracao = { id: number; nome: string; cat: string; bairro: string; dur: number; dia: number; reservada?: boolean; resumo: string | null };
+type Atracao = { id: number; nome: string; cat: string; bairro: string; dur: number; dia: number; reservada?: boolean; agendar?: boolean; dica?: string | null; resumo: string | null };
 type Foto = { url: string | null; credito: string | null };
 
 // Fotos já pedidas nesta visita (abrir a prévia de novo não busca outra vez).
@@ -45,7 +45,7 @@ function ItemPrevia({ a, tirada, onAlternar }: { a: Atracao; tirada: boolean; on
       <div className="previa-lin">
         <button className="previa-info" onClick={() => setAberto(!aberto)} aria-expanded={aberto} aria-label={(aberto ? "Fechar o resumo de " : "Ver o que é ") + a.nome}>
           <span className="previa-foto" style={foto?.url ? { backgroundImage: `url("${foto.url}")` } : undefined}>{foto && !foto.url && <Icon name="landmark" />}</span>
-          <span style={{ flex: 1, minWidth: 0 }}><b>{a.nome}</b><small>{[a.cat, a.bairro, a.dur + " min"].filter(Boolean).join(" · ")}</small></span>
+          <span style={{ flex: 1, minWidth: 0 }}><b>{a.nome}</b><small>{[a.cat, a.bairro, a.dur + " min"].filter(Boolean).join(" · ")}</small>{a.agendar && <span className="badge b-sun previa-agendar">Agende antes</span>}</span>
           <Icon name={aberto ? "up" : "down"} />
         </button>
         {a.reservada ? <span className="badge b-sea">Reservado</span> : (
@@ -57,6 +57,7 @@ function ItemPrevia({ a, tirada, onAlternar }: { a: Atracao; tirada: boolean; on
       {aberto && (
         <div className="previa-resumo">
           {foto?.url && <div className="previa-foto-g" style={{ backgroundImage: `url("${foto.url}")` }}>{foto.credito && <small className="foto-cred">{foto.credito}</small>}</div>}
+          {a.agendar && <p className="previa-dica">{a.dica && a.dica !== a.resumo ? a.dica : "Agende antes: este lugar costuma pedir reserva ou ingresso com hora marcada."}</p>}
           <p>{a.resumo ?? "Ainda não temos um resumo deste lugar. Ele entrou pelo seu perfil e pela localização perto do hotel."}</p>
         </div>
       )}

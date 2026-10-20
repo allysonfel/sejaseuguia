@@ -123,6 +123,7 @@ export default function DayTimeline({ d, next, ctx, moeda, canEdit, open, setOpe
                       <div className="tags">
                         {it.done && <span className="badge b-sea"><Icon name="check" />Concluída</span>}
                         {it.fixed && <span className="badge b-sun">Reservado {it.fixed}</span>}
+                        {p.reserva && !p.meal && !it.fixed && !it.done && <span className="badge b-sun">Agende antes</span>}
                         {it.warn === "fecha" && <span className="badge b-coral">Fora do horário de funcionamento</span>}
                         {it.warn === "fechado" && <span className="badge b-coral">Fechado neste dia</span>}
                         {it.late && <span className="badge b-coral">Chegada depois do horário reservado</span>}

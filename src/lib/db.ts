@@ -259,18 +259,19 @@ async function createSchema() {
     ALTER TABLE pois ADD COLUMN IF NOT EXISTS foto_credito TEXT;
     ALTER TABLE pois ADD COLUMN IF NOT EXISTS foto_buscada_em TIMESTAMPTZ;
     -- Limpeza de importações antigas (só o que a equipe ainda não revisou): a própria cidade como atração
-    -- ("Salvador" em Salvador) e teatro sem visita guiada (entravam como atração das 10h às 18h).
+    -- ("Salvador" em Salvador).
     UPDATE pois p SET active = false FROM destinations d
       WHERE p.destination_id = d.id AND NOT p.revisado AND p.active AND lower(p.nome) = lower(d.nome);
-    UPDATE pois SET active = false
-      WHERE NOT revisado AND active AND cat = 'Experiência' AND nome ~* '^(teatro|theatro|theatre|théâtre|teatr)'
-        AND nome !~* '(amazonas|municipal|da paz|col[oó]n|garnier|scala|nacional|bolshoi|real|massimo|liceu|s[aã]o carlos|[oó]pera)';
-    -- ... e tira esses lugares dos roteiros em andamento ou futuros (viagem passada fica como foi).
+    -- Teatro funciona com programação: fica recomendado, mas marcado como "pede reserva" com a dica de agendar.
+    -- (mesmo texto de DICA_TEATRO em placeImport.ts)
+    UPDATE pois SET reserva = true, tip = 'Precisa agendar: a visita e os espetáculos seguem a programação do teatro. Veja os dias e horários no site e agende antes de ir.'
+      WHERE NOT revisado AND cat = 'Experiência' AND nome ~* '^(teatro|theatro|theatre|théâtre|teatr)' AND NOT reserva;
+    -- ... e tira a cidade-como-atração dos roteiros em andamento ou futuros (viagem passada fica como foi).
     -- Fica o que tem reserva (fixed) ou já foi marcado como realizado (done).
     WITH sair AS (
       SELECT p.id FROM pois p JOIN destinations d ON d.id = p.destination_id
       WHERE NOT p.revisado AND NOT p.active
-        AND (lower(p.nome) = lower(d.nome) OR (p.cat = 'Experiência' AND p.nome ~* '^(teatro|theatro|theatre|théâtre|teatr)'))
+        AND lower(p.nome) = lower(d.nome)
     )
     UPDATE trips t SET version = version + 1, days = (
       SELECT jsonb_agg(jsonb_set(d, '{items}', coalesce((
