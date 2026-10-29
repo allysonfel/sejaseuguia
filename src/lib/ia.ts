@@ -1,12 +1,14 @@
-// Reconhecimento de lugares pela foto ("O que é esse lugar?") com IA de
-// camada gratuita. Provedores tentados na ordem de IA_PROVEDOR (padrão
-// "glm,groq"); quem não tem chave é pulado, e se um falha (cota grátis
-// esgotada, "sobrecarregado") tenta o próximo:
+// Reconhecimento de lugares pela foto ("O que é esse lugar?"). Provedores
+// tentados na ordem de IA_PROVEDOR (padrão "gemini,glm,groq"); quem não tem
+// chave é pulado, e se um falha (cota esgotada, "sobrecarregado") tenta o próximo:
+//   gemini → Gemini Flash do Google, plano pago da Lux (não treina com a foto).
+//            Teto próprio de fotos por dia (GEMINI_FOTO_MAX_DIA); passou, vai para os grátis.
+//            Chave: GEMINI_API_KEY
 //   glm  → GLM-4.6V-Flash da Z.ai (Zhipu), gratuito. Chave: ZAI_API_KEY
 //   groq → Qwen 3.8 27B no Groq, camada gratuita (~8 mil tokens/min, cerca
 //          de 2 fotos por minuto: serve de reserva). Chave: GROQ_API_KEY
 //
-// Camada gratuita: o provedor pode usar o conteúdo enviado para treinar
+// Camada gratuita (glm, groq): o provedor pode usar o conteúdo enviado para treinar
 // os modelos dele. Por isso a foto vai reduzida, sem a coordenada (só a
 // lista de lugares próximos), o prompt manda ignorar pessoas, e a foto nunca
 // é guardada aqui.
@@ -97,10 +99,43 @@ const groq: Provedor = {
     chatCompativel("https://api.groq.com/openai/v1/chat/completions", chave, { model: process.env.GROQ_MODEL?.trim() || "qwen/qwen3.8-27b", response_format: { type: "json_object" } }, prompt, foto, mime),
 };
 
-const PROVEDORES: Record<string, Provedor> = { glm, groq };
+// Teto do dia só das fotos (o dos roteiros fica em iaRoteiro): passou, o Gemini sai da fila até virar o dia.
+const GEMINI_FOTO_MAX_DIA = Number(process.env.GEMINI_FOTO_MAX_DIA) || 500;
+let fotosHoje = { data: "", n: 0 };
+function geminiComCota() {
+  const hoje = new Date().toISOString().slice(0, 10);
+  if (fotosHoje.data !== hoje) fotosHoje = { data: hoje, n: 0 };
+  if (fotosHoje.n >= GEMINI_FOTO_MAX_DIA) return false;
+  fotosHoje.n++;
+  return true;
+}
+
+const gemini: Provedor = {
+  nome: "gemini",
+  chave: () => process.env.GEMINI_API_KEY?.trim() || undefined,
+  chamar: async (chave, prompt, foto, mime) => {
+    if (!geminiComCota()) throw new Error("teto de fotos do dia");
+    const modelo = process.env.GEMINI_FOTO_MODEL?.trim() || "gemini-flash-latest";
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:generateContent`, {
+      method: "POST",
+      headers: { "x-goog-api-key": chave, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ inline_data: { mime_type: mime, data: foto } }, { text: prompt }] }],
+        // Raciocínio "low": a foto não precisa pensar muito (cai de ~9 s para ~4 s e gasta menos).
+        generationConfig: { temperature: 0.2, responseMimeType: "application/json", maxOutputTokens: 4000, thinkingConfig: { thinkingLevel: "low" } },
+      }),
+      signal: AbortSignal.timeout(TIMEOUT),
+    });
+    const r = (await res.json().catch(() => ({}))) as { error?: { message?: string }; candidates?: { content?: { parts?: { text?: string }[] } }[] };
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${r.error?.message ?? ""}`);
+    return (r.candidates?.[0]?.content?.parts ?? []).map((x) => x.text ?? "").join("");
+  },
+};
+
+const PROVEDORES: Record<string, Provedor> = { gemini, glm, groq };
 
 function ordem(): Provedor[] {
-  const nomes = (process.env.IA_PROVEDOR || "glm,groq").split(",").map((s) => s.trim().toLowerCase());
+  const nomes = (process.env.IA_PROVEDOR || "gemini,glm,groq").split(",").map((s) => s.trim().toLowerCase());
   return nomes.map((n) => PROVEDORES[n]).filter((p): p is Provedor => !!p && !!p.chave());
 }
 
