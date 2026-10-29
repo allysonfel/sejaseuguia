@@ -239,6 +239,8 @@ export type GenerateInput = {
   /** limite do último dia, "HH:MM" (ex.: voo de volta) */
   lastDayEnd: string | null;
   ratings?: Ratings;
+  /** lugares de cada dia sugeridos pela pesquisa (Gemini): entram primeiro, mesmo fora do raio ou do orçamento */
+  plano?: Record<number, number[]>;
 };
 
 export type GenerateResult = { days: DayPlan[]; activities: number; optimizedMove: number; naiveMove: number; candidates: number };
@@ -246,13 +248,15 @@ export type GenerateResult = { days: DayPlan[]; activities: number; optimizedMov
 /** Categorias que não se repetem no mesmo dia (praia ocupa meio período: três seguidas viram um dia só de praia). */
 const MAX_POR_DIA: Record<string, number> = { Praia: 1 };
 
-export function generate({ ctx, nDays, forced, lastDayEnd, ratings = {} }: GenerateInput): GenerateResult {
+export function generate({ ctx, nDays, forced, lastDayEnd, ratings = {}, plano }: GenerateInput): GenerateResult {
   const { profile: prof, rules: r } = ctx;
   const perDay = r.porRitmo[prof.ritmo] ?? 5;
   // Horário intermediário: 9h30 mesmo marcando "evitar acordar muito cedo".
   const start = prof.mob.includes("Acordar cedo") ? 540 : prof.mob.includes("Horário intermediário") ? 570 : prof.evitar.includes("Acordar muito cedo") ? 600 : 570;
-  const cand = Object.values(ctx.pois).filter((p) => eligible(p, ctx));
-  const sc = new Map(cand.map((p) => [p.id, score(p, ctx, ratings)]));
+  // A pesquisa já levou o perfil em conta: o que ela escolheu passa pelos filtros de raio e orçamento.
+  const sugeridos = new Set(Object.values(plano ?? {}).flat());
+  const cand = Object.values(ctx.pois).filter((p) => eligible(p, ctx) || (p.active && sugeridos.has(p.id)));
+  const sc = new Map(cand.map((p) => [p.id, score(p, ctx, ratings) + (sugeridos.has(p.id) ? 3 : 0)]));
   const forcedIds = new Set(forced.map((f) => f.poiId));
   const pool = cand.filter((p) => !p.meal && !forcedIds.has(p.id)).sort((a, b) => sc.get(b.id)! - sc.get(a.id)!);
   const meals = cand.filter((p) => p.meal && !forcedIds.has(p.id));
@@ -267,12 +271,26 @@ export function generate({ ctx, nDays, forced, lastDayEnd, ratings = {} }: Gener
     if (endFixed) target = Math.min(target, Math.max(1, Math.floor((toMin(endFixed) - start) / 130)));
     const cluster: Poi[] = dayForced.map((f) => ctx.pois[f.poiId]).filter((p) => !p.meal);
     const chosen: Poi[] = [];
-    if (!cluster.length && pool.length) chosen.push(pool.shift()!);
-    while (cluster.length + chosen.length < target && pool.length) {
+    // Sugestões da pesquisa para este dia vêm primeiro (as que ainda estão livres).
+    let mealSugerido: Poi | null = null;
+    for (const id of plano?.[d] ?? []) {
+      const pi = pool.findIndex((p) => p.id === id);
+      if (pi >= 0 && cluster.length + chosen.length < target) { chosen.push(pool.splice(pi, 1)[0]); continue; }
+      const mi = meals.findIndex((p) => p.id === id);
+      if (mi >= 0 && !mealSugerido) mealSugerido = meals.splice(mi, 1)[0];
+    }
+    if (!cluster.length && !chosen.length && pool.length) chosen.push(pool.shift()!);
+    // Dia que a pesquisa montou e já passa de 7 h (parque temático, passeio de dia inteiro): não completa
+    // e não põe refeição à parte (come-se lá dentro; uma parada a mais empurra o parque para depois do fechamento).
+    const cheio = !!plano?.[d]?.length && [...cluster, ...chosen].reduce((a, p) => a + p.dur, 0) >= 420;
+    // O que a pesquisa guardou para os próximos dias não serve para completar este.
+    const depois = new Set(Object.entries(plano ?? {}).filter(([k]) => Number(k) > d).flatMap(([, v]) => v));
+    while (!cheio && cluster.length + chosen.length < target && pool.length) {
       const c = centroid([ctx.hotel, ...cluster, ...chosen].slice(cluster.length + chosen.length ? 1 : 0));
       let bi = 0, bv = -Infinity;
       const doDia = [...cluster, ...chosen];
       pool.forEach((p, i) => {
+        if (depois.has(p.id)) return;
         if ((MAX_POR_DIA[p.cat] ?? Infinity) <= doDia.filter((x) => x.cat === p.cat).length) return;
         const v = sc.get(p.id)! - streetKm(c, p) * (r.desloc / 100) * 0.9;
         if (v > bv) { bv = v; bi = i; }
@@ -282,7 +300,9 @@ export function generate({ ctx, nDays, forced, lastDayEnd, ratings = {} }: Gener
     }
     let meal: Poi | null = null;
     const hasForcedMeal = dayForced.some((f) => ctx.pois[f.poiId].meal);
-    if (r.almoco && !hasForcedMeal && meals.length) {
+    if (cheio) meal = null;
+    else if (r.almoco && !hasForcedMeal && mealSugerido) meal = mealSugerido;
+    else if (r.almoco && !hasForcedMeal && meals.length) {
       const c = centroid([...cluster, ...chosen].length ? [...cluster, ...chosen] : [ctx.hotel]);
       let bi = 0, bv = -Infinity;
       meals.forEach((p, i) => {
@@ -297,6 +317,11 @@ export function generate({ ctx, nDays, forced, lastDayEnd, ratings = {} }: Gener
     naiveMove += sched(fixConflicts(naive, d, ctx), d, ctx).moveMin;
 
     let plan: DayPlan = { start, items: orderRoute(chosen.map((p) => p.id), ctx).map((p) => ({ p })), endFixed };
+    // Dia de parque: sai do hotel para chegar na abertura (não antes das 7h), como quem vai a parque temático.
+    if (cheio && chosen.length === 1 && !cluster.length) {
+      const abre = toMin(chosen[0].abre) - travel(ctx.hotel, chosen[0], prof, r).min;
+      if (abre < start) plan.start = Math.max(420, abre);
+    }
     // almoço: na posição em que cai mais perto das 13h
     if (meal) {
       let best = 0, bv = Infinity;

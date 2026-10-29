@@ -10,6 +10,7 @@ const LIMITES: [prefixo: string, max: number][] = [
   ["/api/auth/signup", 10],
   ["/api/auth/", 20],
   ["/api/identify", 10],
+  ["/api/trips/pesquisa", 10],
   ["/api/assistant", 20],
   ["/api/me/export", 5],
   ["/api/admin/travelers.csv", 10],

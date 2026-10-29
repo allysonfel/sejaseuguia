@@ -128,7 +128,7 @@ export default function DayTimeline({ d, next, ctx, moeda, canEdit, open, setOpe
                         {it.warn === "fechado" && <span className="badge b-coral">Fechado neste dia</span>}
                         {it.late && <span className="badge b-coral">Chegada depois do horário reservado</span>}
                         {p.meal && <span className="badge b-grey">Refeição</span>}
-                        {p.revisado === false && <span className="badge b-violet" title="Sugerido automaticamente a partir de dados abertos. A agência ainda não revisou este lugar.">Sugestão automática</span>}
+                        {p.revisado === false && <span className="badge b-violet" title="Sugerido automaticamente (dados abertos ou pesquisa no Google). A agência ainda não revisou este lugar.">Sugestão automática</span>}
                         {p.tags.filter((t) => ctx.profile.int.includes(t)).slice(0, 2).map((t) => <span key={t} className="badge b-navy">{t}</span>)}
                       </div>
                     </button>

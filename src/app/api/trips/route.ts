@@ -4,6 +4,7 @@ import { ensureSchema, sql } from "@/lib/db";
 import { getDestination, getRules, listPois } from "@/lib/data";
 import { generate, haversineKm } from "@/lib/engine";
 import { daysBetween } from "@/lib/format";
+import { aplicarPesquisa, pesquisarRoteiro, type Plano } from "@/lib/iaRoteiro";
 import { forcedFromReservations, lastDayEnd, newSlug, userRatings } from "@/lib/tripOps";
 import type { Reservation, ReservationType } from "@/lib/types";
 
@@ -71,16 +72,31 @@ export async function POST(req: Request) {
   // Lugar reservado fica no roteiro mesmo que a pessoa tenha tirado na prévia.
   const reservados = new Set(forced.map((f) => f.poiId));
   const excluir = new Set(Array.isArray(b.excluir) ? b.excluir.slice(0, 500).map(Number).filter((x) => Number.isInteger(x) && !reservados.has(x)) : []);
-  const pois = todos.filter((p) => !excluir.has(p.id));
+  let pois = todos.filter((p) => !excluir.has(p.id));
+  const profile = u.profile ?? DEFAULT_PROFILE;
+  const regras = await getRules();
+  // Híbrido: o Gemini pesquisa no Google e sugere os lugares de cada dia; sem resposta, o motor monta sozinho.
+  let plano: Plano | null = null;
+  const lugares = await pesquisarRoteiro({ userId: u.id, dest, inicio, fim, nDias: n, hotel, profile, porDia: regras.porRitmo[profile.ritmo] ?? 5, catalogo: todos });
+  if (lugares) {
+    try {
+      plano = await aplicarPesquisa(dest, pois, lugares);
+      const novos = new Map(plano.pois.map((p) => [p.id, p]));
+      pois = [...pois.filter((p) => !novos.has(p.id)), ...novos.values()];
+    } catch (e) {
+      console.error("[ia-roteiro] aplicar", (e as Error).message);
+      plano = null;
+    }
+  }
   if (pois.length < 3 && excluir.size) return fail("Sobraram poucas atrações em " + dest.nome + ". Deixe pelo menos 3 no roteiro.");
   if (pois.length < 3) return fail(dest.nome + " ainda tem poucos lugares cadastrados para montar um roteiro.");
   const ctx = {
     pois: Object.fromEntries(pois.map((p) => [p.id, p])),
-    hotel, profile: u.profile ?? DEFAULT_PROFILE, inicio,
+    hotel, profile, inicio,
     // Sem restaurantes: o motor não põe refeição na montagem (as reorganizações depois já não põem).
-    rules: { ...(await getRules()), ...(b.restaurantes === false ? { almoco: false } : {}) },
+    rules: { ...regras, ...(b.restaurantes === false ? { almoco: false } : {}) },
   };
-  const g = generate({ ctx, nDays: n, forced, lastDayEnd: lastDayEnd(periodo, reservas as Reservation[]), ratings: await userRatings(u) });
+  const g = generate({ ctx, nDays: n, forced, lastDayEnd: lastDayEnd(periodo, reservas as Reservation[]), ratings: await userRatings(u), plano: plano?.dias });
 
   if (b.previa) {
     // Só as atrações (refeições o app escolhe sozinho), na ordem dos dias.

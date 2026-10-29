@@ -256,6 +256,17 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
 
   const nDays = daysBetween(ini, fim) + 1;
 
+  // Pesquisa do roteiro no Google (1 a 2 min): começa sozinha quando destino, datas e hospedagem estão
+  // preenchidos, para a prévia já encontrar a resposta pronta. Espera 2 s sem mudanças antes de pedir.
+  const pesqId = dest?.pronto ? dest.id : null, pesqNome = hotelNome.trim();
+  useEffect(() => {
+    if (!pesqId || !hotel || !pesqNome || daysBetween(ini, fim) < 0) return;
+    const t = setTimeout(() => {
+      api("/api/trips/pesquisa", { body: { destinationId: pesqId, inicio: ini, fim, hotel: { nome: pesqNome, ...hotel } } }).catch(() => {});
+    }, 2000);
+    return () => clearTimeout(t);
+  }, [pesqId, hotel, pesqNome, ini, fim]);
+
   const corpo = () => ({ destinationId: dest!.id, inicio: ini, fim, pax, hotel: { nome: hotelNome.trim(), ...hotel! }, reservas, restaurantes: comRestaurantes });
 
   function validar(): boolean {
@@ -519,9 +530,14 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
       <button className="btn btn-sun btn-block" style={{ marginTop: 6 }} onClick={revisar} disabled={gen != null || carregandoPrevia} aria-busy={!!dest && !dest.pronto && prep?.status !== "falhou"}>
         {dest && !dest.pronto && prep?.status !== "falhou"
           ? <><span className="spin spin-ok" aria-hidden />Preparando os lugares de {dest.nome}…</>
-          : carregandoPrevia ? <><span className="spin spin-ok" aria-hidden />Escolhendo as atrações…</>
+          : carregandoPrevia ? <><span className="spin spin-ok" aria-hidden />Pesquisando os melhores lugares…</>
           : <><Icon name="route" />Montar meu roteiro</>}
       </button>
+      {carregandoPrevia && (
+        <p className="muted" role="status" style={{ fontSize: 13, textAlign: "center", marginTop: 8 }}>
+          Estamos conferindo no Google o que abre nas suas datas, horários e ingressos. Pode levar até 2 minutos.
+        </p>
+      )}
 
       {previa && createPortal(
         <>

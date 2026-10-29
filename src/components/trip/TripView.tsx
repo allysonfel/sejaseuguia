@@ -232,7 +232,7 @@ export default function TripView(props: Props) {
             <Icon name="info" />
             <div style={{ flex: 1 }}>
               <b>Roteiro com sugestões automáticas</b>
-              {autos} {autos === 1 ? "lugar foi sugerido" : "lugares foram sugeridos"} a partir de dados abertos e a agência ainda não revisou. Os horários podem ser estimados: confirme antes de ir.
+              {autos} {autos === 1 ? "lugar foi sugerido" : "lugares foram sugeridos"} automaticamente (dados abertos ou pesquisa no Google) e a agência ainda não revisou. Os horários podem ser estimados: confirme antes de ir.
             </div>
             <button onClick={fecharAviso} aria-label="Fechar aviso"><Icon name="close" /></button>
           </div>
