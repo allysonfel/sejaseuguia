@@ -60,12 +60,15 @@ export function haversineKm(a: Place, b: Place): number {
 /** Distância pelas ruas: a linha reta vezes um fator de traçado urbano. */
 const streetKm = (a: Place, b: Place) => haversineKm(a, b) * 1.3;
 
+/** Carro e app: os primeiros 5 km no ritmo da cidade, o resto em via expressa (Orlando: hotel até a Disney ~25 km). */
+const rodando = (km: number, cidade: number, estrada: number) => Math.min(km, 5) * cidade + Math.max(0, km - 5) * estrada;
+
 export function legFor(km: number, modo: Mode, folga = 0): Leg {
   const base =
     modo === "a pé" ? Math.max(3, Math.round(km * 13)) :
     modo === "transporte público" ? Math.round(8 + km * 3.4) :
-    modo === "carro" ? Math.round(5 + km * 2.4) :
-    Math.round(6 + km * 2.6);
+    modo === "carro" ? Math.round(5 + rodando(km, 2.4, 1.2)) :
+    Math.round(6 + rodando(km, 2.6, 1.3));
   return { km, min: base + (modo === "a pé" ? 0 : folga), modo };
 }
 

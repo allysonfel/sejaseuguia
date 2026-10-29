@@ -213,7 +213,7 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
     setSearching(true);
     if (!auto) setHits(null);
     try {
-      const r = await api<{ results: Hit[] }>(`/api/geo/search?q=${encodeURIComponent(txt + " " + dest.nome)}&lat=${dest.lat}&lng=${dest.lng}${auto ? "&auto=1" : ""}`);
+      const r = await api<{ results: Hit[] }>(`/api/geo/search?q=${encodeURIComponent(txt)}&cidade=${encodeURIComponent(dest.nome)}&lat=${dest.lat}&lng=${dest.lng}${auto ? "&auto=1" : ""}`);
       if (id !== hotelBusca.current) return;
       setHits(r.results);
       if (!auto && r.results.length === 1) choose(r.results[0]);
