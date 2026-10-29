@@ -2,6 +2,8 @@
 // (sobre o destino, dinheiro, transporte, apps, alertas, pratos típicos, preço de cada lugar do roteiro,
 // onde reservar e dicas). Uma pesquisa por viagem, guardada em trips.guia; roda por trás depois da montagem
 // e, se ainda não existir, na hora de baixar o PDF. Sem chave ou com falha, o PDF sai só com o que o app já tem.
+// Lugar que entrou no roteiro depois do guia (troca, novo dia, pedido ao Gui) é pesquisado à parte no download
+// (só preço e reserva) e somado ao guia guardado.
 
 import { sql } from "./db";
 import { geminiDisponivel, chamarGemini, cotaGeral } from "./iaRoteiro";
@@ -22,6 +24,8 @@ export type Guia = {
   /** gasto médio por pessoa por dia, na moeda local */
   diaria: { alimentacao: number | null; transporte: number | null };
   dicas: string[];
+  /** lugares já pesquisados (com ou sem preço achado): os de fora entram na pesquisa complementar */
+  conferidos?: number[];
 };
 
 const emAndamento = new Map<number, Promise<Guia | null>>();
@@ -39,6 +43,11 @@ function liberado(ownerId: number) {
 }
 
 const txt = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+// Texto curto cortado no fim de uma palavra (não no meio, como "Exige ingresso válido de entrada para ").
+const curto = (v: unknown, max: number) => {
+  const t = txt(v, 1000);
+  return t.length <= max ? t : t.slice(0, t.lastIndexOf(" ", max)).replace(/[\s,;:.]+$/, "") + "…";
+};
 const lista = (v: unknown, n: number, max: number) => (Array.isArray(v) ? v.map((x) => txt(x, max)).filter(Boolean).slice(0, n) : []);
 const valor = (v: unknown) => {
   const n = Number(v);
@@ -67,24 +76,43 @@ Responda só JSON:
 "pratos":[{"nome":"","tipo":"prato|doce|bebida","desc":"1 frase"}],
 "precos":[{"id":0,"valor":0,"obs":""}],"reservas":[{"id":0,"como":"","site":""}],
 "diaria":{"alimentacao":0,"transporte":0},"dicas":["lembranças, fotos, horários, segurança"]}
-Regras: até 5 itens em cada lista (pratos até 8). precos: um item por lugar do roteiro, valor = ingresso por adulto na moeda local (número) ou null se grátis ou sem preço confirmado; obs curta (ex.: "grátis", "crianças pagam menos", "ingresso por horário"). reservas: só para os lugares com reserva true, como comprar ou agendar e o site oficial (https). diaria: gasto médio por pessoa por dia com alimentação e com transporte local, na moeda local. Escreva em português do Brasil com acentuação correta (é, ã, ç, ô): nunca tire os acentos. Sem travessão, sem emojis.`;
+Regras: até 5 itens em cada lista (pratos até 8). precos: um item por lugar do roteiro, valor = ingresso por adulto na moeda local (número) ou null se grátis ou sem preço confirmado; obs curta (ex.: "grátis", "crianças pagam menos", "ingresso por horário"). reservas: só para os lugares com reserva true, como comprar ou agendar e o site oficial (https). diaria: gasto médio por pessoa por dia com alimentação e com transporte local, na moeda local. Escreva em português do Brasil com acentuação correta (é, ã, ç, ô): nunca tire os acentos. Exemplo do jeito certo: "Reserve com antecedência pelo site oficial; é obrigatório ter ingresso válido e o consumo é pago à parte." Sem travessão, sem emojis.`;
 }
 
-export function lerGuia(texto: string, pois: Poi[]): Guia | null {
+function lerJson(texto: string): Record<string, unknown> | null {
   const a = texto.indexOf("{"), b = texto.lastIndexOf("}");
   if (a < 0 || b <= a) return null;
-  let j: Record<string, unknown>;
-  try { j = JSON.parse(texto.slice(a, b + 1)); } catch { return null; }
+  try { return JSON.parse(texto.slice(a, b + 1)); } catch { return null; }
+}
+
+// Só ids de lugares do roteiro entram (a resposta da IA não cria nem mexe em outro lugar).
+function precosEReservas(j: Record<string, unknown>, pois: Poi[]) {
   const ids = new Set(pois.map((p) => p.id));
   const precos: Guia["precos"] = {}, reservas: Guia["reservas"] = {};
   for (const x of Array.isArray(j.precos) ? (j.precos as Record<string, unknown>[]).slice(0, 200) : []) {
     const id = Number(x?.id);
-    if (ids.has(id)) precos[id] = { valor: valor(x.valor), obs: txt(x.obs, 80) };
+    if (ids.has(id)) precos[id] = { valor: valor(x.valor), obs: curto(x.obs, 140) };
   }
   for (const x of Array.isArray(j.reservas) ? (j.reservas as Record<string, unknown>[]).slice(0, 100) : []) {
     const id = Number(x?.id);
     if (ids.has(id)) reservas[id] = { como: txt(x.como, 240), site: site(x.site) };
   }
+  return { precos, reservas };
+}
+
+function promptComplemento(trip: Trip, pois: Poi[]) {
+  const lugares = pois.map((p) => ({ id: p.id, nome: p.nome, cat: p.cat, reserva: p.reserva }));
+  return `Você é um agente de viagens brasileiro completando o guia em PDF de um roteiro real. Use a busca do Google para confirmar preços e links oficiais. Não invente: o que não confirmou, deixe null.
+Destino: ${trip.destino}, ${trip.pais}. Datas: ${trip.inicio} a ${trip.fim}. Moeda local: ${trip.moeda}.
+Lugares: ${JSON.stringify(lugares)}
+Responda só JSON: {"precos":[{"id":0,"valor":0,"obs":""}],"reservas":[{"id":0,"como":"","site":""}]}
+Regras: precos: um item por lugar, valor = ingresso por adulto na moeda local (número) ou null se grátis ou sem preço confirmado; obs curta. reservas: só para os lugares com reserva true, como comprar ou agendar e o site oficial (https). Escreva em português do Brasil com acentuação correta (é, ã, ç, ô): nunca tire os acentos. Exemplo do jeito certo: "Reserve com antecedência pelo site oficial; é obrigatório ter ingresso válido e o consumo é pago à parte." Sem travessão, sem emojis.`;
+}
+
+export function lerGuia(texto: string, pois: Poi[]): Guia | null {
+  const j = lerJson(texto);
+  if (!j) return null;
+  const { precos, reservas } = precosEReservas(j, pois);
   const d = (j.diaria ?? {}) as Record<string, unknown>;
   const g: Guia = {
     sobre: lista(j.sobre, 3, 900),
@@ -99,6 +127,7 @@ export function lerGuia(texto: string, pois: Poi[]): Guia | null {
     precos, reservas,
     diaria: { alimentacao: valor(d.alimentacao), transporte: valor(d.transporte) },
     dicas: lista(j.dicas, 5, 300),
+    conferidos: pois.map((p) => p.id),
   };
   return g.sobre.length || Object.keys(precos).length ? g : null;
 }
@@ -117,6 +146,29 @@ async function pesquisar(trip: Trip, pois: Poi[], profile: Profile): Promise<Gui
   }
 }
 
+// Pesquisa só os lugares novos e soma ao guia guardado. Falhou: devolve o guia como estava (tenta de novo no próximo download).
+async function completar(trip: Trip, guia: Guia, vistos: Set<number>, novos: Poi[]): Promise<Guia> {
+  const t0 = Date.now();
+  try {
+    const r = await chamarGemini(promptComplemento(trip, novos));
+    const j = lerJson(r.texto);
+    console.log(`[ia-guia] ${trip.destino} viagem ${trip.id}: complemento de ${novos.length} lugares ${j ? "ok" : "vazio"} em ${Math.round((Date.now() - t0) / 1000)} s, consumo ${r.consumo ?? "?"}`);
+    if (!j) return guia;
+    const { precos, reservas } = precosEReservas(j, novos);
+    const g: Guia = {
+      ...guia,
+      precos: { ...guia.precos, ...precos },
+      reservas: { ...guia.reservas, ...reservas },
+      conferidos: [...new Set([...vistos, ...novos.map((p) => p.id)])],
+    };
+    await sql`UPDATE trips SET guia = ${sql.json(g)}, guia_em = now() WHERE id = ${trip.id}`;
+    return g;
+  } catch (e) {
+    console.error("[ia-guia]", (e as Error).message.slice(0, 300));
+    return guia;
+  }
+}
+
 /** Guia guardado da viagem (null se ainda não tem). */
 export async function guiaSalvo(tripId: number): Promise<Guia | null> {
   const [r] = await sql<{ guia: Guia | null }[]>`SELECT guia FROM trips WHERE id = ${tripId}`;
@@ -128,13 +180,15 @@ export async function guiaSalvo(tripId: number): Promise<Guia | null> {
  * Só os lugares do roteiro que não são refeição entram no preço; os restaurantes também, para a gastronomia.
  */
 export async function obterGuia(trip: Trip, pois: Poi[], profile: Profile): Promise<Guia | null> {
-  const salvo = await guiaSalvo(trip.id);
-  if (salvo) return salvo;
-  if (!geminiDisponivel()) return null;
   const atual = emAndamento.get(trip.id);
   if (atual) return atual;
-  if (!liberado(trip.ownerId)) return null;
-  const r = pesquisar(trip, pois, profile).finally(() => emAndamento.delete(trip.id));
+  const salvo = await guiaSalvo(trip.id);
+  // Guia de antes do campo "conferidos": vale o que tem preço.
+  const vistos = new Set(salvo ? salvo.conferidos ?? Object.keys(salvo.precos).map(Number) : []);
+  const novos = salvo ? pois.filter((p) => !vistos.has(p.id)) : [];
+  if (salvo && !novos.length) return salvo;
+  if (!geminiDisponivel() || !liberado(trip.ownerId)) return salvo;
+  const r = (salvo ? completar(trip, salvo, vistos, novos.slice(0, 40)) : pesquisar(trip, pois, profile)).finally(() => emAndamento.delete(trip.id));
   emAndamento.set(trip.id, r);
   return r;
 }
