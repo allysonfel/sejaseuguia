@@ -54,15 +54,22 @@ const cache = new Map<string, { em: number; r: Promise<LugarIA[] | null> }>();
 
 export const geminiDisponivel = () => !!process.env.GEMINI_API_KEY?.trim();
 
-function liberado(userId: number) {
-  const agora = Date.now(), hoje = new Date().toISOString().slice(0, 10);
+/** Teto geral do dia, somando roteiros e guias do PDF. Conta uma chamada quando há cota. */
+export function cotaGeral() {
+  const hoje = new Date().toISOString().slice(0, 10);
   if (dia.data !== hoje) dia = { data: hoje, n: 0 };
   if (dia.n >= MAX_DIA) return false;
+  dia.n++;
+  return true;
+}
+
+function liberado(userId: number) {
+  const agora = Date.now();
   const l = (usos.get(userId) ?? []).filter((t) => agora - t < JANELA);
   if (l.length >= MAX_POR_JANELA) return false;
+  if (!cotaGeral()) return false;
   l.push(agora);
   usos.set(userId, l);
-  dia.n++;
   return true;
 }
 
@@ -130,30 +137,35 @@ export function lerLugares(texto: string, p: Pick<PedidoRoteiro, "dest" | "nDias
   return out;
 }
 
-async function chamar(p: PedidoRoteiro): Promise<LugarIA[] | null> {
+/** Uma chamada ao Gemini com busca no Google; devolve o texto da resposta (JSON) e o consumo, para medir o custo. */
+export async function chamarGemini(texto: string): Promise<{ texto: string; consumo: number | null }> {
   const modelo = process.env.GEMINI_ROTEIRO_MODEL?.trim() || "gemini-flash-latest";
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:generateContent`, {
+    method: "POST",
+    headers: { "x-goog-api-key": process.env.GEMINI_API_KEY!.trim(), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: texto }] }],
+      tools: [{ google_search: {} }],
+      generationConfig: { temperature: 0.3, responseMimeType: "application/json", maxOutputTokens: 32_000 },
+    }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  const r = (await res.json().catch(() => ({}))) as {
+    error?: { message?: string };
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+    usageMetadata?: { totalTokenCount?: number };
+  };
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${r.error?.message ?? ""}`.slice(0, 300));
+  return { texto: (r.candidates?.[0]?.content?.parts ?? []).map((x) => x.text ?? "").join(""), consumo: r.usageMetadata?.totalTokenCount ?? null };
+}
+
+async function chamar(p: PedidoRoteiro): Promise<LugarIA[] | null> {
   const t0 = Date.now();
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:generateContent`, {
-      method: "POST",
-      headers: { "x-goog-api-key": process.env.GEMINI_API_KEY!.trim(), "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt(p) }] }],
-        tools: [{ google_search: {} }],
-        generationConfig: { temperature: 0.3, responseMimeType: "application/json", maxOutputTokens: 32_000 },
-      }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    const r = (await res.json().catch(() => ({}))) as {
-      error?: { message?: string };
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
-      usageMetadata?: { totalTokenCount?: number; thoughtsTokenCount?: number };
-    };
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${r.error?.message ?? ""}`.slice(0, 300));
-    const texto = (r.candidates?.[0]?.content?.parts ?? []).map((x) => x.text ?? "").join("");
-    const lugares = lerLugares(texto, p);
+    const r = await chamarGemini(prompt(p));
+    const lugares = lerLugares(r.texto, p);
     // Uso para medir o custo real por roteiro.
-    console.log(`[ia-roteiro] ${p.dest.nome} ${p.nDias}d: ${lugares.length} lugares em ${Math.round((Date.now() - t0) / 1000)} s, consumo ${r.usageMetadata?.totalTokenCount ?? "?"}`);
+    console.log(`[ia-roteiro] ${p.dest.nome} ${p.nDias}d: ${lugares.length} lugares em ${Math.round((Date.now() - t0) / 1000)} s, consumo ${r.consumo ?? "?"}`);
     return lugares.filter((l) => !l.meal).length ? lugares : null;
   } catch (e) {
     console.error("[ia-roteiro]", (e as Error).message.slice(0, 300));

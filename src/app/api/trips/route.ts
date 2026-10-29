@@ -1,9 +1,10 @@
 import { apiTraveler, fail, isDate, isTime, ok, readBody, str } from "@/lib/api";
 import { DEFAULT_PROFILE } from "@/lib/types";
 import { ensureSchema, sql } from "@/lib/db";
-import { getDestination, getRules, listPois } from "@/lib/data";
+import { getDestination, getRules, getTripForUser, listPois, poisForTrip } from "@/lib/data";
 import { generate, haversineKm } from "@/lib/engine";
 import { daysBetween } from "@/lib/format";
+import { obterGuia } from "@/lib/iaGuia";
 import { aplicarPesquisa, pesquisarRoteiro, type Plano } from "@/lib/iaRoteiro";
 import { forcedFromReservations, lastDayEnd, newSlug, userRatings } from "@/lib/tripOps";
 import type { Reservation, ReservationType } from "@/lib/types";
@@ -117,6 +118,8 @@ export async function POST(req: Request) {
       await tx`INSERT INTO reservations (trip_id, tipo, nome, data, hora, codigo, poi_id) VALUES (${t.id}, ${x.tipo}, ${x.nome}, ${x.data}, ${x.hora}, ${x.codigo}, ${x.poiId})`;
     return t.id;
   });
+  // Guia do destino para o PDF: pesquisa por trás, sem a pessoa esperar.
+  void getTripForUser(id, u).then(async (t) => { if (t) await obterGuia(t, Object.values(await poisForTrip(t)), profile); }).catch(() => {});
   const saved = g.naiveMove > 0 ? Math.max(0, Math.round((1 - g.optimizedMove / g.naiveMove) * 100)) : 0;
   return ok({ id, days: n, activities: g.activities, saved, candidates: g.candidates });
 }

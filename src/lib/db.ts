@@ -249,6 +249,9 @@ async function createSchema() {
     -- 0 = viajante esperando (passa na frente), 1 = pré-carga do painel; escolhas = vezes escolhido na nova viagem
     ALTER TABLE destinations ADD COLUMN IF NOT EXISTS import_prioridade INT NOT NULL DEFAULT 0;
     ALTER TABLE destinations ADD COLUMN IF NOT EXISTS escolhas INT NOT NULL DEFAULT 0;
+    -- Guia do destino para o PDF (pesquisa do Gemini): sobre, orientações, gastronomia, preços, reservas, dicas.
+    ALTER TABLE trips ADD COLUMN IF NOT EXISTS guia JSONB;
+    ALTER TABLE trips ADD COLUMN IF NOT EXISTS guia_em TIMESTAMPTZ;
     ALTER TABLE pois ADD COLUMN IF NOT EXISTS revisado BOOLEAN NOT NULL DEFAULT true;
     ALTER TABLE pois ADD COLUMN IF NOT EXISTS horario_estimado BOOLEAN NOT NULL DEFAULT false;
     -- nome que veio dos dados abertos (antes da tradução) e o que falta a IA de texto fazer

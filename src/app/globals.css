@@ -295,6 +295,10 @@ a.li:active,button.li:active,.ci:active{transform:scale(.985)}
 .mv-back{animation:qzBack .32s var(--suave) backwards}
 .iniciar-viagem{display:flex;align-items:center;gap:12px;margin-top:12px;padding:10px 14px 10px 10px;border-radius:16px;background:var(--sun);color:var(--sun-ink);box-shadow:0 4px 0 #D98E00;transition:transform .15s var(--mola),box-shadow .15s}
 .iniciar-viagem:active{transform:translateY(3px);box-shadow:0 1px 0 #D98E00}
+/* roteiro em PDF: ação secundária, abaixo do Iniciar viagem */
+.baixar-pdf{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:8px;padding:9px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:inherit;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
+.baixar-pdf .i{width:17px;height:17px}
+.baixar-pdf[disabled]{opacity:.7}
 .iniciar-viagem .iv-ic{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.35)}
 .iniciar-viagem .iv-t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
 .iniciar-viagem .iv-t b{font-size:15.5px;font-weight:800}

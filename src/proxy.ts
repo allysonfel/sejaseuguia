@@ -31,7 +31,8 @@ export async function proxy(req: NextRequest) {
 
   const geral = dentroDoLimite(`g:${ip}`, LIMITE_GERAL);
   if (!geral.ok) return muitas(geral.esperarSeg, api);
-  const regra = LIMITES.find(([p]) => path.startsWith(p));
+  // PDF do roteiro (/api/trips/<id>/pdf): pesado, monta o documento e, na 1ª vez, pesquisa o guia.
+  const regra: [string, number] | undefined = /^\/api\/trips\/\d+\/pdf$/.test(path) ? ["pdf", 10] : LIMITES.find(([p]) => path.startsWith(p));
   if (regra) {
     const r = dentroDoLimite(`${regra[0]}:${ip}`, regra[1]);
     if (!r.ok) return muitas(r.esperarSeg, api);

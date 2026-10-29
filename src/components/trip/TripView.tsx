@@ -71,6 +71,26 @@ export default function TripView(props: Props) {
   const [reservations, setReservations] = useState(props.reservations);
   const [members, setMembers] = useState(props.members);
   const [sheet, setSheet] = useState<null | "addres" | "share">(null);
+  const [baixando, setBaixando] = useState(false);
+
+  // Roteiro em PDF: na 1ª vez o app pesquisa o guia do destino (até 2 min); depois sai na hora.
+  async function baixarPdf() {
+    setBaixando(true);
+    toast("Preparando o PDF. Na primeira vez pode levar até 2 minutos");
+    try {
+      const res = await fetch(`/api/trips/${trip.id}/pdf`);
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || "Não deu para gerar o PDF agora.");
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "roteiro.pdf";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      toast((e as Error).message);
+    }
+    setBaixando(false);
+  }
   const [resInicial, setResInicial] = useState<SugestaoReserva | undefined>(undefined);
   const [chat, setChat] = useState(false);
   useAssistenteDaViagem(canEdit);
@@ -200,6 +220,10 @@ export default function TripView(props: Props) {
             <span className="iv-t"><b>Iniciar viagem</b><small>Modo viagem do Dia {day + 1}: o que fazer agora, horários e trajetos</small></span>
             <Icon name="right" />
           </Link>
+          <button className="baixar-pdf" onClick={baixarPdf} disabled={baixando} aria-busy={baixando}>
+            {baixando ? <span className="spin spin-ok" aria-hidden /> : <Icon name="download" />}
+            {baixando ? "Preparando o PDF…" : "Baixar roteiro em PDF"}
+          </button>
           <div className="ttabs">
             {tabs.map(([k, l]) => <button key={k} className={tab === k ? "on" : ""} onClick={() => irTab(k)}>{l}</button>)}
           </div>
