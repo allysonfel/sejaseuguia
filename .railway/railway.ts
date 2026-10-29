@@ -21,8 +21,7 @@ export default defineRailway(() => {
     // Só recebe tráfego quando /api/saude responde (o banco respondeu).
     healthcheck: "/api/saude",
     healthcheckTimeout: 120,
-    // Caiu: sobe de novo sozinho, até 10 vezes seguidas.
-    deploy: { restartPolicyType: "ON_FAILURE", restartPolicyMaxRetries: 10 },
+    // Reinício: fica o padrão do Railway (caiu, sobe de novo sozinho, até 10 vezes seguidas).
   });
   return project("seja-seu-guia", {
     resources: [sejaseuguia],
