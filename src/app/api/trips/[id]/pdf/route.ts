@@ -1,5 +1,5 @@
 import { renderToBuffer } from "@react-pdf/renderer";
-import { apiTraveler, fail } from "@/lib/api";
+import { apiTraveler, fail, ok } from "@/lib/api";
 import { getUserById } from "@/lib/auth";
 import { climaDoMes } from "@/lib/clima";
 import { getRules, getTripForUser, listReservations, poisForTrip } from "@/lib/data";
@@ -7,6 +7,7 @@ import { PLANTAO_CONSULAR, telefonesDe } from "@/lib/emergencia";
 import { schedAll } from "@/lib/engine";
 import { dmy, todayIso } from "@/lib/format";
 import { obterGuia } from "@/lib/iaGuia";
+import { terminouEm } from "@/lib/iaRoteiro";
 import { RoteiroPdf } from "@/lib/pdf/RoteiroPdf";
 import { DEFAULT_PROFILE } from "@/lib/types";
 
@@ -33,13 +34,21 @@ async function fotoDeCapa(url: string | null): Promise<Buffer | null> {
 }
 
 // Roteiro em PDF: quem organiza e quem foi convidado para a viagem.
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+// Com `?preparar=1` só começa (ou acompanha) a pesquisa do guia e responde na hora se ela terminou:
+// o app chama de 3 em 3 s antes de baixar (o Safari do iPhone desiste de esperar uma resposta depois de 60 s).
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const u = await apiTraveler();
   if (!u) return fail("Entre de novo para continuar.", 401);
   const trip = await getTripForUser(Number((await ctx.params).id), u);
   if (!trip) return fail("Viagem não encontrada.", 404);
   const owner = trip.ownerId === u.id ? u : await getUserById(trip.ownerId);
   const profile = owner?.profile ?? DEFAULT_PROFILE;
+  if (new URL(req.url).searchParams.get("preparar") === "1") {
+    const [pois, rules] = await Promise.all([poisForTrip(trip), getRules()]);
+    const dias = schedAll(trip.days, { pois, hotel: trip.hotel, profile, rules, inicio: trip.inicio });
+    const usados = [...new Map(dias.flatMap((d) => d.items.map((i) => [i.poi.id, i.poi]))).values()];
+    return ok({ pronto: await terminouEm(obterGuia(trip, usados, profile)) });
+  }
   const [pois, rules, reservas, clima, foto] = await Promise.all([
     poisForTrip(trip), getRules(), listReservations([trip.id]),
     climaDoMes(trip.destinationId, trip.hotel.lat, trip.hotel.lng, trip.inicio).catch(() => null),

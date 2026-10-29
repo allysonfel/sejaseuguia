@@ -286,6 +286,16 @@ export default function NewTripForm({ destinations, profile, today }: { destinat
     if (!validar()) return;
     setCarregandoPrevia(true);
     try {
+      // A pesquisa no Google leva de 1 a 2 min e o Safari do iPhone desiste de esperar uma resposta depois de 60 s:
+      // acompanha de 3 em 3 s e só pede a prévia quando ela terminou (aí a prévia sai na hora).
+      const ate = Date.now() + 180_000;
+      while (Date.now() < ate) {
+        const p = await api<{ iniciada: boolean; pronta?: boolean }>("/api/trips/pesquisa", { body: corpo() })
+          // Limite ou queda de rede: espera e pergunta de novo; outro erro segue sem a pesquisa.
+          .catch((e: { status?: number }) => (e.status === 429 || !e.status ? { iniciada: true, pronta: false } : null));
+        if (!p?.iniciada || p.pronta) break;
+        await new Promise((ok) => setTimeout(ok, 3000));
+      }
       const r = await api<{ atracoes: Atracao[] }>("/api/trips", { body: { ...corpo(), previa: true } });
       setFora(new Set());
       setPrevia(r.atracoes);

@@ -10,7 +10,8 @@ const LIMITES: [prefixo: string, max: number][] = [
   ["/api/auth/signup", 10],
   ["/api/auth/", 20],
   ["/api/identify", 10],
-  ["/api/trips/pesquisa", 10],
+  // O app acompanha a pesquisa de 3 em 3 s (até 2 min); quem começa pesquisa no Gemini tem freio próprio por pessoa e por dia.
+  ["/api/trips/pesquisa", 40],
   ["/api/assistant", 20],
   ["/api/me/export", 5],
   ["/api/admin/travelers.csv", 10],
@@ -31,8 +32,10 @@ export async function proxy(req: NextRequest) {
 
   const geral = dentroDoLimite(`g:${ip}`, LIMITE_GERAL);
   if (!geral.ok) return muitas(geral.esperarSeg, api);
-  // PDF do roteiro (/api/trips/<id>/pdf): pesado, monta o documento e, na 1ª vez, pesquisa o guia.
-  const regra: [string, number] | undefined = /^\/api\/trips\/\d+\/pdf$/.test(path) ? ["pdf", 10] : LIMITES.find(([p]) => path.startsWith(p));
+  // PDF do roteiro (/api/trips/<id>/pdf): pesado, monta o documento. O acompanhamento do guia (?preparar=1,
+  // de 3 em 3 s enquanto pesquisa) tem limite à parte para não gastar o do download.
+  const pdf = /^\/api\/trips\/\d+\/pdf$/.test(path) ? (req.nextUrl.searchParams.get("preparar") === "1" ? ["pdf-preparar", 40] as [string, number] : ["pdf", 10] as [string, number]) : undefined;
+  const regra: [string, number] | undefined = pdf ?? LIMITES.find(([p]) => path.startsWith(p));
   if (regra) {
     const r = dentroDoLimite(`${regra[0]}:${ip}`, regra[1]);
     if (!r.ok) return muitas(r.esperarSeg, api);

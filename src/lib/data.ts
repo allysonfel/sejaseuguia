@@ -60,6 +60,7 @@ export async function listDestinations(opts: { published?: boolean } = {}): Prom
 }
 
 export async function getDestination(id: number): Promise<Destination | null> {
+  if (!Number.isInteger(id)) return null;
   await ensureSchema();
   const r = await sql<DestRow[]>`SELECT * FROM destinations WHERE id = ${id}`;
   return r[0] ? mapDest(r[0]) : null;

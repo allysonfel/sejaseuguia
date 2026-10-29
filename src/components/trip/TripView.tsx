@@ -23,6 +23,7 @@ import MapTab from "./MapTab";
 import PeopleTab, { ShareSheet } from "./PeopleTab";
 import ReservationsTab, { AddReservationSheet, type SugestaoReserva } from "./ReservationsTab";
 import { useTripEditor } from "./useTripEditor";
+import { api } from "@/lib/client";
 
 type Tab = "roteiro" | "mapa" | "reservas" | "pessoas";
 export type Banner = { t: string; d: string; ai?: boolean; festa?: boolean };
@@ -78,6 +79,15 @@ export default function TripView(props: Props) {
     setBaixando(true);
     toast("Preparando o PDF. Na primeira vez pode levar até 2 minutos");
     try {
+      // O guia é pesquisado no Google (até 2 min) e o Safari do iPhone desiste de esperar depois de 60 s:
+      // acompanha de 3 em 3 s e só baixa quando o guia terminou.
+      const ate = Date.now() + 180_000;
+      while (Date.now() < ate) {
+        const p = await api<{ pronto: boolean }>(`/api/trips/${trip.id}/pdf?preparar=1`)
+          .catch((e: { status?: number }) => (e.status === 429 || !e.status ? { pronto: false } : null));
+        if (!p || p.pronto) break;
+        await new Promise((ok) => setTimeout(ok, 3000));
+      }
       const res = await fetch(`/api/trips/${trip.id}/pdf`);
       if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || "Não deu para gerar o PDF agora.");
       const url = URL.createObjectURL(await res.blob());

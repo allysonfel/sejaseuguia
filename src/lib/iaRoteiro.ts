@@ -186,9 +186,15 @@ export function pesquisarRoteiro(p: PedidoRoteiro): Promise<LugarIA[] | null> {
   if (!liberado(p.userId)) return Promise.resolve(null);
   const r = chamar(p);
   cache.set(k, { em: agora, r });
-  // Falhou: não guarda, para a próxima tentativa pesquisar de novo.
-  r.then((x) => { if (!x) cache.delete(k); });
+  // Falhou: guarda só 2 min (a prévia logo em seguida monta com o motor, sem esperar outra pesquisa);
+  // depois disso a próxima tentativa pesquisa de novo.
+  r.then((x) => { if (!x) cache.set(k, { em: Date.now() - CACHE_MS + 2 * 60_000, r }); });
   return r;
+}
+
+/** Espera a pesquisa até `ms`: true se já terminou (com ou sem lugares), false se ainda está rodando. */
+export function terminouEm(r: Promise<unknown>, ms = 1500): Promise<boolean> {
+  return Promise.race([r.then(() => true, () => true), new Promise<boolean>((ok) => setTimeout(() => ok(false), ms))]);
 }
 
 export type Plano = { pois: Poi[]; dias: Record<number, number[]> };

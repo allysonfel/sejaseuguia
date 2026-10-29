@@ -3,12 +3,12 @@ import { DEFAULT_PROFILE } from "@/lib/types";
 import { getDestination, getRules, listPois } from "@/lib/data";
 import { haversineKm } from "@/lib/engine";
 import { daysBetween } from "@/lib/format";
-import { geminiDisponivel, pesquisarRoteiro } from "@/lib/iaRoteiro";
+import { geminiDisponivel, pesquisarRoteiro, terminouEm } from "@/lib/iaRoteiro";
 
 type Body = { destinationId: number; inicio: string; fim: string; hotel: { nome: string; lat: number; lng: number } };
 
 // Começa a pesquisa do roteiro (Gemini) assim que destino, datas e hospedagem estão preenchidos.
-// Responde na hora; a prévia e a montagem reaproveitam a mesma pesquisa (leva de 1 a 2 min).
+// Responde na hora (espera no máximo 1,5 s); a prévia e a montagem reaproveitam a mesma pesquisa (leva de 1 a 2 min).
 export async function POST(req: Request) {
   const u = await apiTraveler();
   if (!u) return fail("Entre de novo para continuar.", 401);
@@ -25,6 +25,7 @@ export async function POST(req: Request) {
   const todos = await listPois(dest.id, { forEngine: true });
   const profile = u.profile ?? DEFAULT_PROFILE;
   const regras = await getRules();
-  void pesquisarRoteiro({ userId: u.id, dest, inicio, fim, nDias: n, hotel, profile, porDia: regras.porRitmo[profile.ritmo] ?? 5, catalogo: todos });
-  return ok({ iniciada: true });
+  const r = pesquisarRoteiro({ userId: u.id, dest, inicio, fim, nDias: n, hotel, profile, porDia: regras.porRitmo[profile.ritmo] ?? 5, catalogo: todos });
+  // O app chama de novo a cada 3 s até `pronta` (o Safari do iPhone desiste de esperar uma resposta depois de 60 s).
+  return ok({ iniciada: true, pronta: await terminouEm(r) });
 }
