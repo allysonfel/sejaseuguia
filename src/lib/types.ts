@@ -190,6 +190,7 @@ export const ADMIN_MODULES = [
   ["pois", "Pontos de interesse"],
   ["dest", "Destinos"],
   ["engine", "Motor de roteiros"],
+  ["sales", "Vendas"],
   ["team", "Equipe e LGPD"],
 ] as const;
 export type AdminModule = (typeof ADMIN_MODULES)[number][0];
@@ -200,7 +201,7 @@ export const DEFAULT_PERMISSIONS: Permissions = {
   Administrador: ADMIN_MODULES.map((m) => m[0]),
   "Curador de conteúdo": ["overview", "pois", "dest"],
   Suporte: ["overview", "travelers", "trips"],
-  Financeiro: ["overview"],
+  Financeiro: ["overview", "sales"],
 };
 
 export type ReplanKind =

@@ -1,4 +1,5 @@
 import { apiTraveler, fail, ok, readBody } from "@/lib/api";
+import { podeUsarAgora } from "@/lib/planos";
 import { sql } from "@/lib/db";
 import { identificarLugar } from "@/lib/ia";
 import { nearbyPois, validCoords } from "@/lib/nearby";
@@ -32,6 +33,8 @@ export async function POST(req: Request) {
   const m = typeof b.foto === "string" ? b.foto.match(/^data:(image\/[a-z]+);base64,([A-Za-z0-9+/=]+)$/) : null;
   const fotoOk = !!m && MIMES.includes(m[1]) && m[2].length <= MAX_FOTO;
   if (!temLocal && !fotoOk) return fail("Localização inválida.");
+  if (fotoOk && !(await podeUsarAgora(u.id, "foto")))
+    return fail("O O que é? pela foto faz parte do plano Completo da viagem e vale de 48 horas antes até o fim dela.", 402);
 
   const pois = temLocal ? await nearbyPois(lat, lng) : [];
   if (!fotoOk || !liberado(u.id)) return ok({ pois, ia: null });

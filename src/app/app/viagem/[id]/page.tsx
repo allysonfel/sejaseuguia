@@ -5,6 +5,7 @@ import { climaDoMes } from "@/lib/clima";
 import { getRules, getTripForUser, listMembers, listReservations, poisForTrip, tripStatus } from "@/lib/data";
 import { daysBetween, todayIso } from "@/lib/format";
 import { appUrl } from "@/lib/mail";
+import { acessoDaViagem } from "@/lib/planos";
 import { DEFAULT_PROFILE } from "@/lib/types";
 
 export default async function Viagem({ params, searchParams }: {
@@ -16,9 +17,9 @@ export default async function Viagem({ params, searchParams }: {
   if (!trip) notFound();
   const sp = await searchParams;
   const owner = trip.access === "owner" ? u : await getUserById(trip.ownerId);
-  const [pois, reservations, members, rules, clima] = await Promise.all([
+  const [pois, reservations, members, rules, clima, acesso] = await Promise.all([
     poisForTrip(trip), listReservations([trip.id]), listMembers(trip.id), getRules(),
-    climaDoMes(trip.destinationId, trip.hotel.lat, trip.hotel.lng, trip.inicio),
+    climaDoMes(trip.destinationId, trip.hotel.lat, trip.hotel.lng, trip.inicio), acessoDaViagem(trip),
   ]);
   const today = todayIso();
   const dayFromToday = tripStatus(trip, today) === "Em andamento" ? daysBetween(trip.inicio, today) : 0;
@@ -41,6 +42,7 @@ export default async function Viagem({ params, searchParams }: {
       initialDay={dia}
       initialBanner={banner}
       shareUrl={appUrl() + "/v/" + trip.shareSlug}
+      acesso={acesso}
     />
   );
 }

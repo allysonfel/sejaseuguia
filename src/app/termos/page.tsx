@@ -1,6 +1,7 @@
 import Link from "next/link";
 import LegalPage, { cnpjAgencia, emailSuporte } from "@/components/legal/LegalPage";
 import { agencyName } from "@/lib/mail";
+import { cobrancaAtiva } from "@/lib/planos";
 
 export const metadata = { title: "Termos de uso" };
 
@@ -26,6 +27,17 @@ export default function Termos() {
         <li>Tempos de deslocamento são estimativas. Para o caminho exato, use o app de mapas.</li>
         <li>O app não faz reservas nem vende ingressos de terceiros. Reservas feitas em outros sites seguem as regras de quem vendeu.</li>
       </ul>
+
+      {cobrancaAtiva() && <>
+      <h2>Planos e pagamento</h2>
+      <ul>
+        <li>Montar o roteiro e vê-lo no app é grátis. O roteiro em PDF, o mapa com a sua localização, o Modo viagem, o assistente com inteligência artificial e o O que é? pela foto fazem parte dos planos, comprados para cada viagem ou pela assinatura anual. Preços e o que cada plano inclui aparecem antes da compra.</li>
+        <li>O PDF fica disponível para sempre. As funções usadas durante a viagem valem de 48 horas antes do primeiro dia até o fim da viagem.</li>
+        <li>O pagamento é feito pela Cakto, por Pix ou cartão. A viagem é liberada quando o pagamento é confirmado.</li>
+        <li>A assinatura anual libera até o número de viagens por mês informado no plano. Cancelada, ela vale até o fim do período já pago.</li>
+        <li>Você pode desistir da compra em até 7 dias, com o valor devolvido (direito de arrependimento do Código de Defesa do Consumidor). Depois disso, a compra pode ser cancelada com devolução enquanto a viagem não tiver começado. Peça pelo suporte.</li>
+      </ul>
+      </>}
 
       <h2>Sua conta</h2>
       <ul>

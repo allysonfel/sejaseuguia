@@ -14,6 +14,7 @@ const NAV: [AdminModule, string, IconName, string, string?][] = [
   ["pois", "/admin/lugares", "pin", "Pontos de interesse", "Conteúdo"],
   ["dest", "/admin/destinos", "globe", "Destinos"],
   ["engine", "/admin/motor", "sliders", "Motor de roteiros", "Inteligência"],
+  ["sales", "/admin/vendas", "bag", "Vendas", "Financeiro"],
   ["team", "/admin/equipe", "shield", "Equipe e LGPD", "Operação"],
 ];
 

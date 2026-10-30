@@ -1,6 +1,7 @@
 import AppHeader from "@/components/AppHeader";
 import TabBar from "@/components/TabBar";
 import { requireTraveler } from "@/lib/auth";
+import { cobrancaAtiva } from "@/lib/planos";
 import ProfileView from "./ProfileView";
 
 export default async function Perfil() {
@@ -9,7 +10,7 @@ export default async function Perfil() {
     <>
       <AppHeader title="Perfil" sub="Conta e preferências" avatar={u.avatar} />
       <div className="a-body">
-        <ProfileView nome={u.nome} email={u.email} avatar={u.avatar} profile={u.profile} support={process.env.AGENCY_SUPPORT_EMAIL || null} agency={process.env.AGENCY_NAME || "Lux Viagens e Turismo"} />
+        <ProfileView nome={u.nome} email={u.email} avatar={u.avatar} profile={u.profile} support={process.env.AGENCY_SUPPORT_EMAIL || null} agency={process.env.AGENCY_NAME || "Lux Viagens e Turismo"} compras={cobrancaAtiva()} />
       </div>
       <TabBar />
     </>

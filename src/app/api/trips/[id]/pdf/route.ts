@@ -7,6 +7,7 @@ import { PLANTAO_CONSULAR, telefonesDe } from "@/lib/emergencia";
 import { schedAll } from "@/lib/engine";
 import { dmy, todayIso } from "@/lib/format";
 import { obterGuia } from "@/lib/iaGuia";
+import { acessoDaViagem } from "@/lib/planos";
 import { terminouEm } from "@/lib/iaRoteiro";
 import { RoteiroPdf } from "@/lib/pdf/RoteiroPdf";
 import { DEFAULT_PROFILE } from "@/lib/types";
@@ -43,6 +44,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   if (!trip) return fail("Viagem não encontrada.", 404);
   const owner = trip.ownerId === u.id ? u : await getUserById(trip.ownerId);
   const profile = owner?.profile ?? DEFAULT_PROFILE;
+  if (!(await acessoDaViagem(trip)).liberados.includes("pdf")) return fail("O roteiro em PDF faz parte de um plano da viagem.", 402);
   if (new URL(req.url).searchParams.get("preparar") === "1") {
     const [pois, rules] = await Promise.all([poisForTrip(trip), getRules()]);
     const dias = schedAll(trip.days, { pois, hotel: trip.hotel, profile, rules, inicio: trip.inicio });

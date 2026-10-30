@@ -15,6 +15,7 @@ const LIMITES: [prefixo: string, max: number][] = [
   ["/api/assistant", 20],
   ["/api/me/export", 5],
   ["/api/me/excluir", 10],
+  ["/api/pedidos", 10],
   ["/api/admin/travelers.csv", 10],
   ["/api/geo/search", 60],
 ];
@@ -31,6 +32,8 @@ export async function proxy(req: NextRequest) {
   const api = path.startsWith("/api/");
   const ip = ipDe(req.headers);
 
+  // Aviso do provedor de pagamento: tem segredo próprio e chega em rajada; fica fora do freio de volume.
+  if (path === "/api/pagamentos/cakto") return NextResponse.next();
   const geral = dentroDoLimite(`g:${ip}`, LIMITE_GERAL);
   if (!geral.ok) return muitas(geral.esperarSeg, api);
   // PDF do roteiro (/api/trips/<id>/pdf): pesado, monta o documento. O acompanhamento do guia (?preparar=1,

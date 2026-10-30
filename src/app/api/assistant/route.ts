@@ -1,4 +1,5 @@
 import { apiTraveler, fail, ok, readBody, str } from "@/lib/api";
+import { podeUsarAgora } from "@/lib/planos";
 import type { Resumo, ResumoItem } from "@/lib/assistant";
 import { entenderComIA } from "@/lib/iaAssistente";
 import { assistenteLiberado } from "@/lib/limiteAssistente";
@@ -48,6 +49,7 @@ export async function POST(req: Request) {
   const q = str(b.q, 300);
   const resumo = limpaResumo(b.resumo);
   if (!q || !resumo) return fail("Pedido inválido.");
-  if (!assistenteLiberado(u.id)) return ok({ intencao: null });
+  // Sem o plano com assistente, os pedidos comuns seguem entendidos no próprio app (sem IA).
+  if (!assistenteLiberado(u.id) || !(await podeUsarAgora(u.id, "assistente"))) return ok({ intencao: null });
   return ok({ intencao: await entenderComIA(q, resumo) });
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import LegalPage, { cnpjAgencia, emailSuporte } from "@/components/legal/LegalPage";
 import { agencyName } from "@/lib/mail";
+import { cobrancaAtiva } from "@/lib/planos";
 
 export const metadata = { title: "Política de privacidade" };
 
@@ -22,6 +23,7 @@ export default function PoliticaPrivacidade() {
         <li><b>Perfil de viajante:</b> as respostas do quiz (com quem viaja, ritmo, interesses, orçamento, como se locomove).</li>
         <li><b>Viagens:</b> destino, datas, hotel, número de viajantes, os lugares de cada dia, suas anotações e as pessoas que você convidar.</li>
         <li><b>Reservas:</b> voos, hotéis, ingressos e outras reservas que você cadastrar, com códigos e localizadores.</li>
+        {cobrancaAtiva() && <li><b>Compras:</b> os planos que você comprou, o valor, a data e a situação do pagamento. Esses registros ficam guardados pelo prazo que a lei exige, mesmo depois da exclusão da conta, sem o seu nome e e-mail.</li>}
         <li><b>Avaliações e descobertas:</b> as notas que você dá aos lugares e os lugares que você descobriu pelo app.</li>
         <li><b>Foto de perfil</b>, se você escolher uma.</li>
       </ul>
@@ -50,13 +52,14 @@ export default function PoliticaPrivacidade() {
         <li><b>Groq e Z.ai:</b> o texto que você escreve no assistente, com um resumo das suas viagens e o seu primeiro nome; e a foto do O que é? quando o Gemini não responde. São serviços gratuitos que podem usar o que recebem para melhorar os modelos deles, por isso evite escrever ou fotografar dados pessoais.</li>
         <li><b>OpenStreetMap, Photon e Nominatim:</b> o texto que você busca (por exemplo, o nome do hotel) e a região do destino, para achar endereços; o mapa é carregado deles.</li>
         <li><b>Resend:</b> o seu e-mail, para entregar os e-mails da conta.</li>
+        {cobrancaAtiva() && <li><b>Cakto:</b> quando você compra um plano, o pagamento é feito no site da Cakto, que recebe o seu nome, e-mail e os dados do pagamento (Pix ou cartão). O Seja Seu Guia não vê nem guarda os dados do cartão; guarda só o plano comprado, o valor e a situação do pagamento.</li>}
         <li><b>Railway:</b> a empresa onde o app e o banco de dados ficam hospedados.</li>
       </ul>
       <p>Algumas dessas empresas ficam fora do Brasil (principalmente nos Estados Unidos). A transferência é feita só para prestar o serviço, com empresas que seguem regras de proteção de dados.</p>
       <p>As pessoas que você convida para uma viagem veem o roteiro dessa viagem. No PDF, quem só pode ver não recebe os códigos das reservas.</p>
 
       <h2>Por quanto tempo guardamos</h2>
-      <p>Enquanto a sua conta existir. Quando você exclui a conta, apagamos na hora a conta, as viagens que você criou, reservas, avaliações e descobertas. Guardamos apenas o registro de que a exclusão foi feita, sem os seus dados.</p>
+      <p>Enquanto a sua conta existir. Quando você exclui a conta, apagamos na hora a conta, as viagens que você criou, reservas, avaliações e descobertas. Guardamos apenas o registro de que a exclusão foi feita{cobrancaAtiva() ? " e os registros de compras exigidos por lei" : ""}, sem o seu nome e e-mail.</p>
 
       <h2>Seus direitos (LGPD)</h2>
       <p>Você pode, a qualquer momento:</p>

@@ -1,5 +1,6 @@
 import postgres from "postgres";
 import { hashPassword } from "./password";
+import { PRODUTOS_PADRAO } from "./planosPadrao";
 import { SEED_DESTINATION, SEED_POIS } from "./seedData";
 import { DEFAULT_PERMISSIONS, DEFAULT_RULES } from "./types";
 
@@ -286,6 +287,66 @@ async function createSchema() {
       SELECT 1 FROM jsonb_array_elements(t.days) dd, jsonb_array_elements(dd->'items') ii
       WHERE (ii->>'p')::int IN (SELECT id FROM sair) AND coalesce(ii->>'fixed', '') = '' AND coalesce((ii->>'done')::boolean, false) = false);
 
+    -- Cobrança (ver lib/planos.ts e lib/pagamentos/). Produtos à venda: planos avulsos por viagem e assinaturas.
+    CREATE TABLE IF NOT EXISTS produtos (
+      id TEXT PRIMARY KEY,
+      nome TEXT NOT NULL,
+      descricao TEXT NOT NULL DEFAULT '',
+      tipo TEXT NOT NULL CHECK (tipo IN ('avulso','assinatura')),
+      preco_centavos BIGINT NOT NULL CHECK (preco_centavos > 0 AND preco_centavos <= 10000000),
+      recursos TEXT[] NOT NULL,
+      creditos_mes INT NOT NULL DEFAULT 0 CHECK (creditos_mes >= 0),
+      oferta_cakto TEXT,
+      ativo BOOLEAN NOT NULL DEFAULT true,
+      ordem INT NOT NULL DEFAULT 0
+    );
+    -- Uma compra. ref (aleatório) vai no link de pagamento e volta no aviso do provedor.
+    -- Registro financeiro não se apaga: muda de status (reembolsado, chargeback).
+    CREATE TABLE IF NOT EXISTS pedidos (
+      id SERIAL PRIMARY KEY,
+      ref TEXT NOT NULL UNIQUE,
+      user_id INT REFERENCES users(id) ON DELETE SET NULL,
+      trip_id INT REFERENCES trips(id) ON DELETE SET NULL,
+      produto_id TEXT NOT NULL REFERENCES produtos(id),
+      valor_centavos BIGINT NOT NULL CHECK (valor_centavos > 0),
+      status TEXT NOT NULL DEFAULT 'aguardando' CHECK (status IN ('aguardando','pago','reembolsado','chargeback','cancelado','revisar')),
+      provedor TEXT NOT NULL,
+      id_externo TEXT UNIQUE,
+      assinatura_externa TEXT,
+      metodo TEXT,
+      pago_centavos BIGINT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      pago_em TIMESTAMPTZ,
+      atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS pedidos_user_idx ON pedidos (user_id, created_at DESC);
+    -- Avisos do provedor já tratados (o mesmo aviso pode chegar mais de uma vez).
+    CREATE TABLE IF NOT EXISTS pagamento_eventos (
+      provedor TEXT NOT NULL,
+      id_evento TEXT NOT NULL,
+      tipo TEXT NOT NULL,
+      recebido_em TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (provedor, id_evento)
+    );
+    -- O que cada viagem tem liberado. Vale enquanto o pedido estiver pago (reembolso tira).
+    -- Viagem liberada com crédito de assinatura aponta para o pedido da assinatura.
+    CREATE TABLE IF NOT EXISTS liberacoes (
+      trip_id INT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      pedido_id INT NOT NULL REFERENCES pedidos(id),
+      recursos TEXT[] NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (trip_id, pedido_id)
+    );
+    CREATE TABLE IF NOT EXISTS assinaturas (
+      id SERIAL PRIMARY KEY,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      pedido_id INT NOT NULL UNIQUE REFERENCES pedidos(id),
+      produto_id TEXT NOT NULL REFERENCES produtos(id),
+      status TEXT NOT NULL DEFAULT 'ativa' CHECK (status IN ('ativa','cancelada','atrasada')),
+      valida_ate TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     -- Clima típico do mês por destino (média dos últimos anos), buscado uma vez e guardado.
     CREATE TABLE IF NOT EXISTS clima_mes (
       destination_id INT NOT NULL REFERENCES destinations(id) ON DELETE CASCADE,
@@ -305,6 +366,13 @@ async function createSchema() {
       ('permissions', ${sql.json(DEFAULT_PERMISSIONS)})
     ON CONFLICT (key) DO NOTHING
   `;
+
+  for (const p of PRODUTOS_PADRAO) {
+    await sql`
+      INSERT INTO produtos (id, nome, descricao, tipo, preco_centavos, recursos, creditos_mes, ordem)
+      VALUES (${p.id}, ${p.nome}, ${p.descricao}, ${p.tipo}, ${p.preco_centavos}, ${p.recursos}, ${p.creditos_mes}, ${p.ordem})
+      ON CONFLICT (id) DO NOTHING`;
+  }
 
   const [{ count: destCount }] = await sql<{ count: string }[]>`SELECT count(*) FROM destinations`;
   if (Number(destCount) === 0) {

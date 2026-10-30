@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { ChuvaConfete } from "@/components/Festa";
 import Icon from "@/components/Icon";
 import BotaoAssistente from "@/components/BotaoAssistente";
@@ -24,6 +24,9 @@ import PeopleTab, { ShareSheet } from "./PeopleTab";
 import ReservationsTab, { AddReservationSheet, type SugestaoReserva } from "./ReservationsTab";
 import { useTripEditor } from "./useTripEditor";
 import { api } from "@/lib/client";
+import { Bloqueado, PlanosSheet } from "@/components/planos/Planos";
+import type { Acesso } from "@/lib/planos";
+import type { Recurso } from "@/lib/planosPadrao";
 import { agendarLembretes, ehApp, ligarLembretes, lembretesLigados, salvarArquivo } from "@/lib/nativo";
 
 type Tab = "roteiro" | "mapa" | "reservas" | "pessoas";
@@ -42,6 +45,8 @@ type Props = {
   initialDay: number;
   initialBanner: Banner | null;
   shareUrl: string;
+  /** O que a viagem tem liberado (cobrança desligada: tudo). */
+  acesso: Acesso;
 };
 
 const ouvirStorage = (cb: () => void) => {
@@ -75,10 +80,14 @@ export default function TripView(props: Props) {
   const [reservations, setReservations] = useState(props.reservations);
   const [members, setMembers] = useState(props.members);
   const [sheet, setSheet] = useState<null | "addres" | "share">(null);
+  const [planos, setPlanos] = useState<null | { motivo?: Recurso }>(null);
+  const fecharPlanos = useCallback(() => setPlanos(null), []);
+  const pode = (r: Recurso) => props.acesso.liberados.includes(r);
   const [baixando, setBaixando] = useState(false);
 
   // Roteiro em PDF: na 1ª vez o app pesquisa o guia do destino (até 2 min); depois sai na hora.
   async function baixarPdf() {
+    if (!pode("pdf")) return setPlanos({ motivo: "pdf" });
     setBaixando(true);
     toast("Preparando o PDF. Na primeira vez pode levar até 2 minutos");
     try {
@@ -295,7 +304,7 @@ export default function TripView(props: Props) {
             alts={alts} nao={nao} actions={actions}
           />
         )}
-        {tab === "mapa" && d && <MapTab d={d} hotel={trip.hotel} />}
+        {tab === "mapa" && d && (pode("mapa") ? <MapTab d={d} hotel={trip.hotel} /> : <Bloqueado recurso="mapa" acesso={props.acesso} onPlanos={() => setPlanos({ motivo: "mapa" })} />)}
         {tab === "reservas" && (
           <ReservationsTab
             tripId={trip.id} reservations={reservations} canEdit={canEdit} onAdd={(s) => { setResInicial(s); setSheet("addres"); }}
@@ -326,6 +335,7 @@ export default function TripView(props: Props) {
           }}
         />
       )}
+      {planos && <PlanosSheet tripId={trip.id} motivo={planos.motivo} onClose={fecharPlanos} />}
       {sheet === "share" && <ShareSheet tripId={trip.id} shareUrl={props.shareUrl} onClose={() => setSheet(null)} onMembers={setMembers} />}
 
       {canEdit && !sheet && (chat ? (

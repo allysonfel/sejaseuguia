@@ -1,14 +1,18 @@
 import { notFound } from "next/navigation";
+import FuncaoBloqueada from "@/components/planos/FuncaoBloqueada";
 import TravelMode from "@/components/trip/TravelMode";
 import { getUserById, requireTraveler } from "@/lib/auth";
 import { getDestination, getRules, getTripForUser, poisForTrip, tripStatus } from "@/lib/data";
 import { daysBetween, todayIso } from "@/lib/format";
+import { acessoDaViagem } from "@/lib/planos";
 import { DEFAULT_PROFILE } from "@/lib/types";
 
 export default async function ModoViagemPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ dia?: string }> }) {
   const u = await requireTraveler();
   const trip = await getTripForUser(Number((await params).id), u);
   if (!trip) notFound();
+  const acesso = await acessoDaViagem(trip);
+  if (!acesso.liberados.includes("modo_viagem")) return <FuncaoBloqueada tripId={trip.id} destino={trip.destino} recurso="modo_viagem" acesso={acesso} />;
   const owner = trip.access === "owner" ? u : await getUserById(trip.ownerId);
   const [pois, rules, dest] = await Promise.all([poisForTrip(trip), getRules(), getDestination(trip.destinationId)]);
   const today = todayIso();

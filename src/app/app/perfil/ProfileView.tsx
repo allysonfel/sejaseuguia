@@ -26,9 +26,8 @@ function resize(file: File): Promise<string> {
   });
 }
 
-export default function ProfileView({ nome, email, avatar, profile, support, agency }: {
-  nome: string; email: string; avatar: string | null; profile: Profile; support: string | null; agency: string;
-}) {
+export default function ProfileView({ nome, email, avatar, profile, support, agency, compras }: {
+  nome: string; email: string; avatar: string | null; profile: Profile; support: string | null; agency: string; compras: boolean }) {
   const router = useRouter();
   const [photo, setPhoto] = useState(avatar);
   const [name, setName] = useState(nome);
@@ -96,6 +95,7 @@ export default function ProfileView({ nome, email, avatar, profile, support, age
       <div className="box" style={{ padding: "4px 16px" }}>
         {row("compass", "Perfil de viajante · " + persona(profile).nome, profile.comp + " · " + profile.ritmo + " · " + profile.orc, "/app/perfil-viajante?voltar=/app/perfil")}
         {row("map", "Explorar lugares", "Mapa do destino da sua próxima viagem", "/app/explorar")}
+        {compras && row("bag", "Minhas compras", "Planos das viagens e assinatura", "/app/compras")}
         {row("lock", "Privacidade e dados", "Consentimentos, exportar ou excluir", "/app/privacidade")}
         <button className="li" style={{ width: "100%", textAlign: "left" }} onClick={() => { guardarSom(!som); setSom(!som); if (!som) somAcerto(); }} aria-pressed={som}>
           <span className="li-ic"><Icon name="spark" /></span>
