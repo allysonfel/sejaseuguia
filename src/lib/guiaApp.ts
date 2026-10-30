@@ -40,7 +40,7 @@ export const GUIA = `Telas do app Seja Seu Guia (da agência Lux Viagens e Turis
 - Explorar lugares: mapa com lugares ao redor do hotel e o que já está no roteiro.
 - Perfil: foto, nome, perfil de viajante, sons de comemoração, ajuda e suporte com a agência (e-mail), sair.
 - Perfil de viajante: companhia, interesses, ritmo, horários (acordar cedo, horário intermediário ou atividades noturnas; o intermediário começa o dia às 9h30, sem programa à noite, e não combina com os outros dois), orçamento, como se locomove e o que evitar. Refazer muda as próximas sugestões. Tem um quiz divertido para descobrir o estilo.
-- Privacidade e dados: consentimentos, exportar os dados ou pedir a exclusão da conta.
+- Privacidade e dados: consentimentos, exportar os dados e excluir a conta na hora (confirma com a senha; apaga conta, viagens criadas, reservas, avaliações e descobertas). Links para a política de privacidade e os termos de uso.
 - Avaliar viagem: depois que a viagem termina, dar nota aos lugares visitados.`;
 
 // Dúvidas comuns respondidas na hora, sem IA. Só entra quando a frase é claramente
@@ -58,7 +58,7 @@ const FAQ: { termos: RegExp; t: string; ir?: Tela }[] = [
   { termos: /\b(como (chego|chegar|ir)|google maps|de onibus|de trem|de carro|a pe ate|caminho ate)\b/, t: "No Roteiro, cada trecho tem os botões a pé, carro, ônibus e trem: o Google Maps abre saindo de onde você está. Na aba Mapa, o botão \"Como ir\" mostra a rota a partir da parada anterior.", ir: "roteiro" },
   { termos: /\b(realizad\w*|concluid\w*|fim do dia|nao deu tempo|dia seguinte|outro dia|remarcar)\b/, t: "No fim do dia do Roteiro, marque cada atração como realizada ou não realizada. As não realizadas podem ir para o dia seguinte com o botão \"Levar para o dia seguinte\", e o app reorganiza os horários.", ir: "roteiro" },
   { termos: /\b(perfil de viajante|meu perfil|meu estilo|quiz|interesses|ritmo)\b/, t: "No Perfil, toque em Perfil de viajante para mudar companhia, interesses, ritmo e orçamento. As próximas sugestões passam a seguir o novo perfil.", ir: "perfilViajante" },
-  { termos: /\b(excluir (a |minha )?conta|apagar (a |minha )?conta|meus dados|exportar|privacidade|consentimento)\b/, t: "Em Privacidade e dados você vê os consentimentos, exporta seus dados ou pede a exclusão da conta.", ir: "privacidade" },
+  { termos: /\b(excluir (a |minha )?conta|apagar (a |minha )?conta|meus dados|exportar|privacidade|consentimento)\b/, t: "Em Privacidade e dados você vê os consentimentos e exporta seus dados. Para excluir a conta, toque em Excluir minha conta e confirme com a sua senha: a exclusão é na hora e não dá para desfazer.", ir: "privacidade" },
   { termos: /\b(sair|deslogar|logout|trocar (a )?foto|mudar (o |meu )?nome)\b/, t: "No Perfil você troca a foto e o nome, e o botão Sair fica no fim da tela.", ir: "perfil" },
   { termos: /\b(suporte|falar com a agencia|atendimento|ajuda humana)\b/, t: "No Perfil, toque em \"Ajuda e suporte\" para mandar um e-mail para a agência.", ir: "perfil" },
   { termos: /\b(modo viagem)\b/, t: "O Modo viagem é o botão do meio, embaixo. Durante a viagem ele mostra o que fazer agora, a próxima parada e o caminho até lá.", ir: "modo" },

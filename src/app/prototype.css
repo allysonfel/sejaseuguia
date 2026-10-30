@@ -643,3 +643,11 @@ select.input{height:38px;border-radius:11px;padding:0 10px;width:auto}
 .wz-acoes{display:flex;justify-content:flex-end;min-height:22px;margin:-8px 0 8px}
 .wz-limpar{font-size:13px;font-weight:600}
 .nv-rest{margin:0 0 14px;width:100%;text-align:left}
+
+/* Páginas públicas: privacidade, termos, suporte e exclusão de conta */
+.legal{font-size:14px;line-height:1.65}
+.legal h2{font-family:var(--serif);font-size:19px;margin:22px 0 8px}
+.legal p,.legal ul{margin:0 0 10px}
+.legal ul{padding-left:20px}
+.legal li{margin-bottom:6px}
+.legal-nav{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:center;margin:28px 0 10px;font-size:13px}

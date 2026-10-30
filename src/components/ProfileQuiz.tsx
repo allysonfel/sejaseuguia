@@ -264,7 +264,7 @@ export default function ProfileQuiz(props: Props) {
                 <div className="field"><label>Senha</label><input className="input" type="password" required minLength={8} placeholder="Mínimo de 8 caracteres" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="new-password" /></div>
                 <label className="row" style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 16, alignItems: "flex-start" }}>
                   <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: 3 }} required />
-                  Li e aceito a política de privacidade e autorizo a {props.agency} a usar meus dados para montar meus roteiros.
+                  <span>Li e aceito a <a className="link" href="/privacidade" target="_blank" rel="noopener">política de privacidade</a> e os <a className="link" href="/termos" target="_blank" rel="noopener">termos de uso</a>, e autorizo a {props.agency} a usar meus dados para montar meus roteiros.</span>
                 </label>
                 <button className="btn btn-sun btn-block qz-3d" disabled={busy}>Criar conta e planejar viagem</button>
               </>

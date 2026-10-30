@@ -11,9 +11,12 @@ const ROWS: [keyof Prefs, string, string][] = [
   ["offers", "Receber ofertas de parceiros", "Hotéis, passeios e seguros"],
 ];
 
-export default function PrivacyView({ prefs: initial, deletePending, consent }: { prefs: Prefs; deletePending: boolean; consent: string | null }) {
+export default function PrivacyView({ prefs: initial, consent }: { prefs: Prefs; consent: string | null }) {
   const [prefs, setPrefs] = useState(initial);
-  const [pending, setPending] = useState(deletePending);
+  const [excluindo, setExcluindo] = useState(false);
+  const [pass, setPass] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function tog(k: keyof Prefs) {
     const next = { ...prefs, [k]: !prefs[k] };
@@ -25,15 +28,19 @@ export default function PrivacyView({ prefs: initial, deletePending, consent }: 
       toast((e as Error).message);
     }
   }
-  async function askDelete() {
-    if (!confirm("Pedir a exclusão da sua conta? A equipe confirma e apaga suas viagens, avaliações e descobertas.")) return;
+  // Exclusão na hora, confirmada com a senha (as lojas exigem exclusão pelo próprio app).
+  async function excluir(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    setBusy(true);
     try {
-      await api("/api/me/privacy-request", { body: { kind: "delete" } });
-      setPending(true);
-      toast("Pedido de exclusão registrado");
+      const r = await api<{ redirect: string }>("/api/me/excluir", { body: { pass } });
+      window.location.href = r.redirect;
+      return;
     } catch (e) {
-      toast((e as Error).message);
+      setErr((e as Error).message);
     }
+    setBusy(false);
   }
 
   return (
@@ -56,10 +63,26 @@ export default function PrivacyView({ prefs: initial, deletePending, consent }: 
         <p style={{ marginTop: 8 }}>Prefere não enviar fotos? Use o botão Só ver o que está perto de mim: ele usa apenas a localização.</p>
       </div>
       <a className="btn btn-ghost btn-block" href="/api/me/export" download><Icon name="download" />Exportar meus dados</a>
-      <button className="btn btn-ghost btn-block" style={{ marginTop: 8, color: "var(--coral)" }} onClick={askDelete} disabled={pending}>
-        <Icon name="trash" />{pending ? "Exclusão pedida, aguardando a equipe" : "Excluir minha conta"}
-      </button>
+      {!excluindo ? (
+        <button className="btn btn-ghost btn-block" style={{ marginTop: 8, color: "var(--coral)" }} onClick={() => setExcluindo(true)}>
+          <Icon name="trash" />Excluir minha conta
+        </button>
+      ) : (
+        <form className="box" style={{ marginTop: 12 }} onSubmit={excluir}>
+          <div className="box-t">Excluir minha conta</div>
+          <p style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 12 }}>
+            Apaga agora a sua conta, o perfil, as viagens que você criou (inclusive para quem você convidou), reservas, avaliações e descobertas. Não dá para desfazer.
+          </p>
+          {err && <div className="err">{err}</div>}
+          <div className="field"><label>Sua senha</label><input className="input" type="password" required value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="current-password" /></div>
+          <button className="btn btn-block" style={{ background: "var(--coral)", color: "#fff" }} disabled={busy}>{busy ? "Excluindo…" : "Excluir de vez"}</button>
+          <button type="button" className="btn btn-ghost btn-block" style={{ marginTop: 8 }} onClick={() => { setExcluindo(false); setErr(null); setPass(""); }}>Cancelar</button>
+        </form>
+      )}
       {consent && <p className="muted" style={{ fontSize: 12, marginTop: 14 }}>Consentimento de uso dos dados registrado em {consent}.</p>}
+      <p style={{ fontSize: 13, marginTop: 10 }}>
+        <a className="link" href="/privacidade">Política de privacidade completa</a> · <a className="link" href="/termos">Termos de uso</a>
+      </p>
     </div>
   );
 }

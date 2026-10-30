@@ -14,6 +14,7 @@ const LIMITES: [prefixo: string, max: number][] = [
   ["/api/trips/pesquisa", 40],
   ["/api/assistant", 20],
   ["/api/me/export", 5],
+  ["/api/me/excluir", 10],
   ["/api/admin/travelers.csv", 10],
   ["/api/geo/search", 60],
 ];
