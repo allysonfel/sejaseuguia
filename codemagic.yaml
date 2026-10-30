@@ -1,0 +1,71 @@
+# Build do app (webview Capacitor) na nuvem: o iPhone só compila em Mac com Xcode 26 (exigido pela Apple
+# desde 2026-04-28). Os dois fluxos mandam para teste fechado: TestFlight e trilha "internal" do Google Play.
+# Segredos ficam no painel do Codemagic (nunca aqui):
+#   - Android: chave de envio "sejaseuguia_upload" (Code signing identities > Android keystores)
+#     e o grupo "google_play" com GCLOUD_SERVICE_ACCOUNT_CREDENTIALS (conta de serviço do Play Console).
+#   - iPhone: integração "App Store Connect" com a chave de API da conta da Lux.
+# A primeira execução serve para validar este arquivo; ajustar nomes se o painel pedir.
+
+workflows:
+  android:
+    name: Android (Google Play, teste interno)
+    instance_type: linux_x2
+    max_build_duration: 30
+    environment:
+      node: 22
+      java: 21
+      android_signing:
+        - sejaseuguia_upload
+      groups:
+        - google_play
+    scripts:
+      - name: Dependências
+        script: npm ci
+      - name: Sincronizar o app com o Capacitor
+        script: npx cap sync android
+      - name: Gerar o pacote assinado (AAB)
+        script: |
+          export ANDROID_KEYSTORE="$CM_KEYSTORE_PATH" ANDROID_KEYSTORE_SENHA="$CM_KEYSTORE_PASSWORD"
+          export ANDROID_KEY_ALIAS="$CM_KEY_ALIAS" ANDROID_KEY_SENHA="$CM_KEY_PASSWORD"
+          export VERSAO_CODIGO="$BUILD_NUMBER" VERSAO_NOME="1.0.$BUILD_NUMBER"
+          cd android && ./gradlew bundleRelease
+    artifacts:
+      - android/app/build/outputs/bundle/release/*.aab
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
+
+  ios:
+    name: iPhone (TestFlight)
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    integrations:
+      app_store_connect: App Store Connect
+    environment:
+      node: 22
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: br.com.luxviagens.sejaseuguia
+    scripts:
+      - name: Dependências
+        script: npm ci
+      - name: Sincronizar o app com o Capacitor
+        script: npx cap sync ios
+      - name: Perfis de assinatura
+        script: xcode-project use-profiles
+      - name: Número da versão
+        script: |
+          cd ios/App
+          agvtool new-version -all "$BUILD_NUMBER"
+          agvtool new-marketing-version "1.0.$BUILD_NUMBER"
+      - name: Gerar o IPA
+        script: xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

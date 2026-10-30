@@ -7,3 +7,10 @@
 *.tsbuildinfo
 next-env.d.ts
 npm-debug.log*
+
+# Chaves de assinatura do app nunca entram no git
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision

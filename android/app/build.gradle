@@ -7,8 +7,9 @@ android {
         applicationId "br.com.luxviagens.sejaseuguia"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // Versão: o build na nuvem passa VERSAO_CODIGO (número que só cresce) e VERSAO_NOME.
+        versionCode((System.getenv("VERSAO_CODIGO") ?: "1").toInteger())
+        versionName(System.getenv("VERSAO_NOME") ?: "1.0.0")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +17,20 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Chave de envio para o Google Play: lida do ambiente, nunca do repositório.
+    signingConfigs {
+        release {
+            if (System.getenv("ANDROID_KEYSTORE")) {
+                storeFile file(System.getenv("ANDROID_KEYSTORE"))
+                storePassword System.getenv("ANDROID_KEYSTORE_SENHA")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("ANDROID_KEY_SENHA")
+            }
+        }
+    }
     buildTypes {
         release {
+            if (System.getenv("ANDROID_KEYSTORE")) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
