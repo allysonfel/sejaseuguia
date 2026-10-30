@@ -24,6 +24,7 @@ import PeopleTab, { ShareSheet } from "./PeopleTab";
 import ReservationsTab, { AddReservationSheet, type SugestaoReserva } from "./ReservationsTab";
 import { useTripEditor } from "./useTripEditor";
 import { api } from "@/lib/client";
+import { agendarLembretes, ehApp, ligarLembretes, lembretesLigados, salvarArquivo } from "@/lib/nativo";
 
 type Tab = "roteiro" | "mapa" | "reservas" | "pessoas";
 export type Banner = { t: string; d: string; ai?: boolean; festa?: boolean };
@@ -55,6 +56,8 @@ const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julh
 // Ex.: "Clima em novembro: costuma fazer 5 a 12 °C, com chuva em uns 12 dias"
 const climaTxt = (c: ClimaMes) =>
   `Clima em ${MESES[c.mes - 1]}: costuma fazer ${c.tmin} a ${c.tmax} °C, ${c.diasChuva <= 1 ? "quase sem chuva" : `com chuva em uns ${c.diasChuva} dias`}`;
+
+const semAssinar = () => () => {};
 
 export default function TripView(props: Props) {
   const { trip, pois, profile, rules } = props;
@@ -90,16 +93,24 @@ export default function TripView(props: Props) {
       }
       const res = await fetch(`/api/trips/${trip.id}/pdf`);
       if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || "Não deu para gerar o PDF agora.");
-      const url = URL.createObjectURL(await res.blob());
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "roteiro.pdf";
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      const nome = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "roteiro.pdf";
+      await salvarArquivo(await res.blob(), nome, "Roteiro de " + trip.destino);
     } catch (e) {
       toast((e as Error).message);
     }
     setBaixando(false);
+  }
+  // Lembretes no celular (só dentro do app): véspera, começo de cada dia e 1 h antes de cada reserva.
+  // O estado só é lido depois de montar (no servidor não existe app nem localStorage).
+  const [ativou, setAtivou] = useState(false);
+  const lembreteSalvo = useSyncExternalStore(semAssinar, () => (!ehApp() ? "web" : lembretesLigados() ? "ligado" : "desligado"), () => "web");
+  const lembretes = ativou ? "ligado" : lembreteSalvo;
+  useEffect(() => { if (lembretes === "ligado") agendarLembretes(trip.id, trip.destino, sdays).catch(() => {}); }, [lembretes, trip.id, trip.destino, sdays]);
+  async function ativarLembretes() {
+    if (await ligarLembretes()) {
+      setAtivou(true);
+      toast("Pronto: você recebe os lembretes da viagem no celular");
+    } else toast("Para receber os lembretes, permita as notificações do Seja Seu Guia nos ajustes do celular");
   }
   const [resInicial, setResInicial] = useState<SugestaoReserva | undefined>(undefined);
   const [chat, setChat] = useState(false);
@@ -234,6 +245,11 @@ export default function TripView(props: Props) {
             {baixando ? <span className="spin spin-ok" aria-hidden /> : <Icon name="download" />}
             {baixando ? "Preparando o PDF…" : "Baixar roteiro em PDF"}
           </button>
+          {lembretes === "desligado" && (
+            <button className="baixar-pdf" onClick={ativarLembretes}>
+              <Icon name="bell" />Receber lembretes da viagem no celular
+            </button>
+          )}
           <div className="ttabs">
             {tabs.map(([k, l]) => <button key={k} className={tab === k ? "on" : ""} onClick={() => irTab(k)}>{l}</button>)}
           </div>

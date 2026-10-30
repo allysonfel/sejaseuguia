@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Icon from "@/components/Icon";
 import { api } from "@/lib/client";
+import { salvarArquivo } from "@/lib/nativo";
 import { toast } from "@/lib/toast";
 import type { Prefs } from "@/lib/auth";
 
@@ -28,6 +29,17 @@ export default function PrivacyView({ prefs: initial, consent }: { prefs: Prefs;
       toast((e as Error).message);
     }
   }
+  // Dentro do app o download por link não funciona: baixa e abre a folha de compartilhar do celular.
+  async function exportar() {
+    try {
+      const res = await fetch("/api/me/export");
+      if (!res.ok) throw new Error("Não deu para exportar agora. Tente de novo.");
+      await salvarArquivo(await res.blob(), "meus-dados-seja-seu-guia.json", "Meus dados do Seja Seu Guia");
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  }
+
   // Exclusão na hora, confirmada com a senha (as lojas exigem exclusão pelo próprio app).
   async function excluir(e: React.FormEvent) {
     e.preventDefault();
@@ -62,7 +74,7 @@ export default function PrivacyView({ prefs: initial, consent }: { prefs: Prefs;
         <p style={{ marginTop: 8 }}>A foto não fica guardada no Seja Seu Guia: ela é usada só para essa resposta. Os serviços gratuitos podem usar o que recebem para melhorar os modelos deles, então evite fotografar pessoas, documentos ou qualquer coisa pessoal.</p>
         <p style={{ marginTop: 8 }}>Prefere não enviar fotos? Use o botão Só ver o que está perto de mim: ele usa apenas a localização.</p>
       </div>
-      <a className="btn btn-ghost btn-block" href="/api/me/export" download><Icon name="download" />Exportar meus dados</a>
+      <button className="btn btn-ghost btn-block" onClick={exportar}><Icon name="download" />Exportar meus dados</button>
       {!excluindo ? (
         <button className="btn btn-ghost btn-block" style={{ marginTop: 8, color: "var(--coral)" }} onClick={() => setExcluindo(true)}>
           <Icon name="trash" />Excluir minha conta

@@ -3,6 +3,7 @@ import { Fraunces, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "leaflet/dist/leaflet.css";
 import "./prototype.css";
 import "./globals.css";
+import NativeBridge from "@/components/NativeBridge";
 import Toaster from "@/components/Toaster";
 
 const fraunces = Fraunces({ subsets: ["latin"], weight: ["500", "600", "700", "800"], variable: "--font-fraunces" });
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <div id="root">{children}</div>
         <Toaster />
+        <NativeBridge />
       </body>
     </html>
   );
