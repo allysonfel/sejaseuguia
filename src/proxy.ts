@@ -52,9 +52,7 @@ export async function proxy(req: NextRequest) {
     const s = await verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
     const staffArea = area("/admin");
     if (!s || s.kind !== (staffArea ? "staff" : "traveler")) {
-      const url = new URL("/entrar", req.url);
-      if (staffArea) url.searchParams.set("equipe", "1");
-      return NextResponse.redirect(url);
+      return NextResponse.redirect(new URL("/entrar", req.url));
     }
   }
   return NextResponse.next();

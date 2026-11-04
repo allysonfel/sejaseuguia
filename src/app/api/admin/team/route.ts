@@ -20,6 +20,6 @@ export async function POST(req: Request) {
     INSERT INTO users (kind, nome, email, pass_hash, staff_role, consent_at)
     VALUES ('staff', ${nome}, ${email}, ${hashPassword(tempPass)}, ${role}, now())`;
   await sendMail(email, "Seu acesso ao painel do Seja Seu Guia",
-    `Oi, ${nome}. ${me.nome} criou seu acesso ao painel (${role}).\n\nEntre em ${appUrl()}/entrar?equipe=1 com este e-mail e a senha provisória: ${tempPass}\nDepois, troque a senha em "Esqueci minha senha".`);
+    `Oi, ${nome}. ${me.nome} criou seu acesso ao painel (${role}).\n\nEntre em ${appUrl()}/entrar com este e-mail e a senha provisória: ${tempPass}\nDepois, troque a senha em "Esqueci minha senha".`);
   return ok({ tempPass });
 }

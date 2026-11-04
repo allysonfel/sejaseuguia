@@ -4,18 +4,16 @@ import { useState } from "react";
 import Icon from "@/components/Icon";
 import { api } from "@/lib/client";
 
-type Tab = "viajante" | "equipe";
 type Mode = "login" | "recover";
 
-export default function AuthForm({ agency, initialTab }: { agency: string; initialTab: Tab }) {
-  const [tab, setTab] = useState<Tab>(initialTab);
+// Um login só: o servidor vê se a conta é de viajante ou da equipe e manda para o lugar certo.
+export default function AuthForm() {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const v = tab === "viajante";
 
   const go = (m: Mode) => { setMode(m); setErr(null); setInfo(null); };
 
@@ -25,7 +23,7 @@ export default function AuthForm({ agency, initialTab }: { agency: string; initi
     setBusy(true);
     try {
       if (mode === "login") {
-        const r = await api<{ redirect: string }>("/api/auth/login", { body: { email, pass, kind: v ? "traveler" : "staff" } });
+        const r = await api<{ redirect: string }>("/api/auth/login", { body: { email, pass } });
         window.location.href = r.redirect;
         return;
       }
@@ -52,12 +50,8 @@ export default function AuthForm({ agency, initialTab }: { agency: string; initi
 
   return (
     <form onSubmit={submit}>
-      <h2>{v ? "Boas-vindas de volta" : "Painel da operação"}</h2>
-      <p className="sub">{v ? "Sua próxima viagem já está esperando." : "Acesso da equipe " + agency + "."}</p>
-      <div className="seg">
-        <button type="button" className={v ? "on" : ""} onClick={() => setTab("viajante")}>Viajante</button>
-        <button type="button" className={!v ? "on" : ""} onClick={() => setTab("equipe")}>Equipe</button>
-      </div>
+      <h2>Boas-vindas de volta</h2>
+      <p className="sub">Sua próxima viagem já está esperando.</p>
       {err && <div className="err">{err}</div>}
       {info && <div className="okmsg">{info}</div>}
       <div className="field"><label>E-mail</label><input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></div>
@@ -67,11 +61,7 @@ export default function AuthForm({ agency, initialTab }: { agency: string; initi
         <button type="button" className="link" onClick={() => go("recover")}>Esqueci minha senha</button>
       </div>
       <button className="btn btn-sun btn-block" disabled={busy}>Entrar</button>
-      {v ? (
-        <div className="auth-foot">Ainda não tem conta? <Link className="link" href="/cadastro">Criar conta grátis</Link></div>
-      ) : (
-        <div className="auth-foot">Cada pessoa da equipe vê só o que o perfil dela permite.</div>
-      )}
+      <div className="auth-foot">Ainda não tem conta? <Link className="link" href="/cadastro">Criar conta grátis</Link></div>
     </form>
   );
 }

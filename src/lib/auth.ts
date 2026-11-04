@@ -72,7 +72,7 @@ export async function allowedModules(u: User): Promise<AdminModule[]> {
 /** Página do painel: exige alguém da equipe com acesso ao módulo. */
 export async function requireStaff(mod?: AdminModule): Promise<User> {
   const u = await getCurrentUser();
-  if (!u || u.kind !== "staff") redirect("/entrar?equipe=1");
+  if (!u || u.kind !== "staff") redirect("/entrar");
   if (mod && !(await allowedModules(u)).includes(mod)) redirect("/admin");
   return u;
 }

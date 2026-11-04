@@ -4,7 +4,7 @@ import { agencyName } from "@/lib/mail";
 import AuthForm from "./AuthForm";
 import AuthHero from "./AuthHero";
 
-export default async function Entrar({ searchParams }: { searchParams: Promise<{ equipe?: string; cadastro?: string; excluida?: string }> }) {
+export default async function Entrar({ searchParams }: { searchParams: Promise<{ cadastro?: string; excluida?: string }> }) {
   const u = await getCurrentUser();
   if (u) redirect(u.kind === "staff" ? "/admin" : "/app");
   const sp = await searchParams;
@@ -16,7 +16,7 @@ export default async function Entrar({ searchParams }: { searchParams: Promise<{
       <div className="auth-form">
         <div className="auth-card">
           {sp.excluida && <div className="okmsg" role="status">Sua conta foi excluída. Obrigado por ter viajado com a gente.</div>}
-          <AuthForm agency={agencyName()} initialTab={sp.equipe ? "equipe" : "viajante"} />
+          <AuthForm />
         </div>
       </div>
     </div>
