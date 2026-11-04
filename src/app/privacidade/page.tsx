@@ -48,8 +48,8 @@ export default function PoliticaPrivacidade() {
       <h2>Com quem compartilhamos</h2>
       <p>Só o necessário para cada função, com estas empresas:</p>
       <ul>
-        <li><b>Google (Gemini):</b> destino, datas, hotel e perfil de viajante, para pesquisar e escolher os lugares do roteiro e o guia do PDF; e a foto do O que é?. É um plano pago, em que o Google não usa esses dados para treinar os modelos dele. Nome, e-mail e reservas não vão junto.</li>
-        <li><b>Groq e Z.ai:</b> o texto que você escreve no assistente, com um resumo das suas viagens e o seu primeiro nome; e a foto do O que é? quando o Gemini não responde. São serviços gratuitos que podem usar o que recebem para melhorar os modelos deles, por isso evite escrever ou fotografar dados pessoais.</li>
+        <li><b>Google (Gemini):</b> destino, datas, hotel e perfil de viajante, para pesquisar e escolher os lugares do roteiro e o guia do PDF; a foto do O que é?; e o texto que você escreve no assistente, com um resumo das suas viagens e o seu primeiro nome. É um plano pago, em que o Google não usa esses dados para treinar os modelos dele. Nome, e-mail e reservas não vão junto.</li>
+        <li><b>Groq e Z.ai:</b> só quando o Gemini não responde: o texto que você escreve no assistente, com um resumo das suas viagens e o seu primeiro nome, e a foto do O que é?. São serviços gratuitos que podem usar o que recebem para melhorar os modelos deles, por isso evite escrever ou fotografar dados pessoais.</li>
         <li><b>OpenStreetMap, Photon e Nominatim:</b> o texto que você busca (por exemplo, o nome do hotel) e a região do destino, para achar endereços; o mapa é carregado deles.</li>
         <li><b>Resend:</b> o seu e-mail, para entregar os e-mails da conta.</li>
         {cobrancaAtiva() && <li><b>Cakto:</b> quando você compra um plano, o pagamento é feito no site da Cakto, que recebe o seu nome, e-mail e os dados do pagamento (Pix ou cartão). O Seja Seu Guia não vê nem guarda os dados do cartão; guarda só o plano comprado, o valor e a situação do pagamento.</li>}

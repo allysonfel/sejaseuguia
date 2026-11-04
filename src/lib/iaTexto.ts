@@ -4,6 +4,7 @@
 //   groq → gpt-oss-120b no Groq (rápido, resume bem). Chave: GROQ_API_KEY
 //   glm  → GLM-4.5-Flash da Z.ai (grátis, reserva).     Chave: ZAI_API_KEY
 // Ordem em IA_TEXTO_PROVEDOR (padrão "groq,glm").
+// O assistente (perguntarRapido) usa IA_ASSISTENTE_PROVEDOR (padrão "gemini,groq,glm"): Gemini pago primeiro.
 
 export type ItemTraducao = { i: number; nome: string; texto: string };
 export type Traducao = { nome: string; historia: string };
@@ -19,10 +20,16 @@ const PROVEDORES: Record<string, Provedor> = {
     nome: "glm", chave: () => process.env.ZAI_API_KEY, url: "https://api.z.ai/api/paas/v4/chat/completions",
     corpo: () => ({ model: process.env.ZAI_TEXTO_MODEL?.trim() || "glm-4.5-flash", thinking: { type: "disabled" } }),
   },
+  // Só para o assistente: chave paga (sem treino), ~1,5 s. O Groq grátis tem 8 mil tokens/min e cada pergunta
+  // leva ~3 mil: a 3ª pergunta no mesmo minuto dava 429 e o GLM estourava o tempo ("Não entendi").
+  gemini: {
+    nome: "gemini", chave: () => process.env.GEMINI_API_KEY?.trim(), url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    corpo: () => ({ model: process.env.GEMINI_ASSISTENTE_MODEL?.trim() || "gemini-flash-lite-latest", response_format: { type: "json_object" }, reasoning_effort: "low" }),
+  },
 };
 
-const ordem = () =>
-  (process.env.IA_TEXTO_PROVEDOR || "groq,glm").split(",").map((s) => PROVEDORES[s.trim().toLowerCase()]).filter((p): p is Provedor => !!p && !!p.chave());
+const ordem = (lista = process.env.IA_TEXTO_PROVEDOR || "groq,glm") =>
+  lista.split(",").map((s) => PROVEDORES[s.trim().toLowerCase()]).filter((p): p is Provedor => !!p && !!p.chave());
 
 export const iaTextoDisponivel = () => ordem().length > 0;
 
@@ -102,7 +109,7 @@ export async function traduzirLugares(cidade: string, pais: string, itens: ItemT
  * se o limite por minuto pedir espera curta. `modelo` troca o modelo por provedor (cota separada). null se todos falharem.
  */
 export async function perguntarRapido(texto: string, maxTokens: number, timeoutMs: number, modelo: Record<string, string | undefined> = {}): Promise<string | null> {
-  for (const p of ordem()) {
+  for (const p of ordem(process.env.IA_ASSISTENTE_PROVEDOR || "gemini,groq,glm")) {
     const extra = modelo[p.nome] ? { model: modelo[p.nome] } : {};
     for (let tentativa = 0; tentativa < 2; tentativa++) {
       try {

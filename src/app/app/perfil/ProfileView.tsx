@@ -102,13 +102,12 @@ export default function ProfileView({ nome, email, avatar, profile, support, age
           <div className="li-m"><b>Sons de comemoração</b><small>Roteiro pronto, atividade e dia concluídos</small></div>
           <span className={"toggle" + (som ? " on" : "")} />
         </button>
-        {support && (
-          <a className="li" href={"mailto:" + support}>
-            <span className="li-ic"><Icon name="help" /></span>
-            <div className="li-m"><b>Ajuda e suporte</b><small>Fale com a {agency}</small></div>
-            <Icon name="right" />
-          </a>
-        )}
+        {/* Sem e-mail de suporte configurado, abre a página de suporte (o Gui e as telas mandam o viajante para cá). */}
+        <a className="li" href={support ? "mailto:" + support : "/suporte"}>
+          <span className="li-ic"><Icon name="help" /></span>
+          <div className="li-m"><b>Ajuda e suporte</b><small>Fale com a {agency}</small></div>
+          <Icon name="right" />
+        </a>
       </div>
       <button className="btn btn-ghost btn-block" onClick={logout} style={{ color: "var(--coral)" }}><Icon name="logout" />Sair</button>
     </div>

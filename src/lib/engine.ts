@@ -251,6 +251,11 @@ export type GenerateResult = { days: DayPlan[]; activities: number; optimizedMov
 /** Categorias que não se repetem no mesmo dia (praia ocupa meio período: três seguidas viram um dia só de praia). */
 const MAX_POR_DIA: Record<string, number> = { Praia: 1 };
 
+/** Até que horas (minutos desde 00:00) o dia costuma ir, por ritmo, chegando de volta ao hotel. */
+const FIM_DIA: Record<string, number> = { Tranquilo: 990, Moderado: 1050, Intenso: 1110 };
+/** Teto de paradas no dia (com a refeição) ao completar a tarde: o tranquilo segue com poucas paradas. */
+const MAX_PARADAS: Record<string, number> = { Tranquilo: 5, Moderado: 7, Intenso: 9 };
+
 export function generate({ ctx, nDays, forced, lastDayEnd, ratings = {}, plano }: GenerateInput): GenerateResult {
   const { profile: prof, rules: r } = ctx;
   const perDay = r.porRitmo[prof.ritmo] ?? 5;
@@ -354,6 +359,35 @@ export function generate({ ctx, nDays, forced, lastDayEnd, ratings = {}, plano }
       }
     }
     plan = improve(fixConflicts(plan, d, ctx), d, ctx);
+    // A contagem por ritmo deixava o dia acabar logo depois do almoço (Tranquilo: 2 atrações + almoço, fim 13h30):
+    // completa com lugares por perto até o horário típico do ritmo, guardando o bastante para os próximos dias.
+    if (!cheio) {
+      const alvo = FIM_DIA[prof.ritmo] ?? 1050;
+      const guardar = (nDays - d - 1) * Math.max(1, target);
+      for (let k = 0; k < 4; k++) {
+        const atual = sched(plan, d, ctx);
+        if (atual.end >= alvo - 30 || pool.length <= guardar || plan.items.length >= (MAX_PARADAS[prof.ritmo] ?? 7)) break;
+        const doDia = plan.items.map((it) => ctx.pois[it.p]).filter(Boolean);
+        const visitas = doDia.filter((p) => !p.meal);
+        const c = centroid(visitas.length ? visitas : [ctx.hotel]);
+        const opcoes = pool
+          .map((p, i) => ({ p, i, v: sc.get(p.id)! - streetKm(c, p) * (r.desloc / 100) * 0.9 }))
+          .filter(({ p }) => !depois.has(p.id) && (MAX_POR_DIA[p.cat] ?? Infinity) > doDia.filter((x) => x.cat === p.cat).length)
+          .sort((a, b) => b.v - a.v)
+          .slice(0, 6);
+        let aceito: { t: DayPlan; i: number } | null = null;
+        for (const o of opcoes) {
+          const item: Item = { p: o.p.id };
+          const t = clone(plan);
+          t.items.splice(bestInsert(t, d, item, ctx), 0, item);
+          const s = sched(t, d, ctx);
+          if (problems(s) <= problems(atual) && (mealOk(s) || !mealOk(atual)) && s.end <= alvo + 60) { aceito = { t, i: o.i }; break; }
+        }
+        if (!aceito) break;
+        pool.splice(aceito.i, 1);
+        plan = improve(aceito.t, d, ctx);
+      }
+    }
     days.push(plan);
   }
   const optimizedMove = days.reduce((a, d, i) => a + sched(d, i, ctx).moveMin, 0);

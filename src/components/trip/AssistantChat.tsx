@@ -43,7 +43,7 @@ export default function AssistantChat({ ctx, days, dayIdx, moeda, onClose, onApp
     setTyping(true);
     let r: Reply;
     const emerg = duvidaEmergencia(q, pais);
-    const local = emerg ? null : entender(q, days[dayIdx], ctx);
+    const local = emerg ? null : entender(q, days, dayIdx, ctx);
     if (emerg) {
       await new Promise((ok) => setTimeout(ok, 300));
       r = { t: emerg };

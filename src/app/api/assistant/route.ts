@@ -37,7 +37,10 @@ function limpaResumo(v: unknown): Resumo | null {
     itens: r.itens.slice(0, 20).map(limpaItem).filter((x): x is ResumoItem => !!x),
     outrosDias: outros.map((d) => {
       const o = (d ?? {}) as Record<string, unknown>;
-      return { dia: int(o.dia, 1, 60) ?? 0, data: str(o.data, 40), lugares: (Array.isArray(o.lugares) ? o.lugares : []).slice(0, 15).map((l) => str(l, 100)).filter(Boolean) };
+      return { dia: int(o.dia, 1, 60) ?? 0, data: str(o.data, 40), lugares: (Array.isArray(o.lugares) ? o.lugares : []).slice(0, 15).map((l) => {
+        const x = (l ?? {}) as Record<string, unknown>;
+        return { id: int(x.id, 1, 2 ** 31) ?? 0, nome: str(x.nome, 100) };
+      }).filter((l) => l.id > 0 && l.nome) };
     }).filter((d) => d.dia > 0),
   };
 }

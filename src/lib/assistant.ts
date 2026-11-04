@@ -67,6 +67,22 @@ const TERMOS: Record<Exclude<Acao, "ajuda" | "responder" | "esclarecer" | "mover
   perto: ["perto", "proxim*", "por aqui", "ao redor", "arredores", "sugest*", "sugere", "sugira", "indica", "indique", "recomend*"],
 };
 
+// Perguntas de uso que as regras de remover/ajuste pegariam errado ("cancelar a viagem" não é tirar uma parada).
+const USO_APP: { termos: string[]; t: string }[] = [
+  {
+    termos: ["cancelar a viagem", "cancela a viagem", "cancelar essa viagem", "cancelar minha viagem", "cancelar esta viagem", "excluir a viagem", "excluir essa viagem", "apagar a viagem", "apagar essa viagem", "desistir da viagem", "deletar a viagem", "remover a viagem", "tirar a viagem"],
+    t: "Para excluir a viagem, abra a aba Pessoas, no topo do roteiro, e toque em Excluir viagem no fim da tela (só quem organiza a viagem vê esse botão). Se a viagem foi comprada com a agência, fale com ela também para cancelar a compra.",
+  },
+  {
+    termos: ["mudar as datas", "mudar a data", "trocar as datas", "trocar a data", "alterar as datas", "alterar a data", "mudar o dia da viagem", "adiar a viagem", "outras datas"],
+    t: "As datas de uma viagem pronta não mudam pelo assistente. Monte uma nova em Planejar nova viagem, no Início, com as datas certas, e depois exclua esta na aba Pessoas, em Excluir viagem.",
+  },
+  {
+    termos: ["mudar o hotel", "trocar o hotel", "mudar de hotel", "trocar de hotel", "mudar a hospedagem", "trocar a hospedagem", "outro hotel"],
+    t: "O hotel é o ponto de partida de todo o roteiro e não muda pelo assistente. Monte uma nova viagem em Planejar nova viagem, no Início, com o hotel novo, e depois exclua esta na aba Pessoas, em Excluir viagem.",
+  },
+];
+
 const SAUDACAO = ["oi", "ola", "bom dia", "boa tarde", "boa noite", "ajuda", "socorro", "o que voce faz", "o que voce sabe fazer", "como funciona"];
 
 // Palavras que não dizem o tipo de comida/lugar pedido.
@@ -135,21 +151,36 @@ function alvoDoPedido(q: string, day: DayPlan, ctx: Ctx): number | null {
  * Pedido comum reconhecido com segurança. null quando não dá para ter certeza
  * (nenhuma regra, duas ações ao mesmo tempo, negação, alvo não achado): aí o app pergunta à IA.
  */
-export function entender(qRaw: string, day: DayPlan, ctx: Ctx): Intencao | null {
+export function entender(qRaw: string, days: DayPlan[], idx: number, ctx: Ctx): Intencao | null {
   const q = limpa(qRaw);
   if (!q) return null;
+  const uso = USO_APP.find((u) => casa(q, u.termos));
+  if (uso) return { acao: "responder", texto: uso.t };
+  const day = days[idx];
   const achadas = (Object.keys(TERMOS) as (keyof typeof TERMOS)[]).filter((a) => casa(q, TERMOS[a]));
   // "perto" é fraco: só vale sozinho ("restaurante perto" é restaurante)
   const fortes = achadas.filter((a) => a !== "perto");
   const negado = /\b(nao|nem|nunca)\b/.test(q) && !casa(q, ["nao quero ir", "nao quero mais"]);
 
   if (!achadas.length) return SAUDACAO.some((s) => q === s || q.startsWith(s + " ")) && palavrasDe(q).length <= 5 ? { acao: "ajuda" } : null;
-  if (negado || casa(q, PERGUNTA) || casa(q, FORA) || DIA_N.test(q)) return null;
+  if (negado || casa(q, PERGUNTA)) return null;
+  // "Tira o museu do Dia 2": remover num dia citado pelo número procura o lugar naquele dia.
+  const diaN = DIA_N.exec(q);
+  if (diaN) {
+    const n = Number(diaN[0].slice(4));
+    if (fortes.length !== 1 || fortes[0] !== "remover" || casa(q, FORA) || n < 1 || n > days.length) return null;
+    const alvo = alvoDoPedido(q, days[n - 1], ctx);
+    if (alvo == null) return null;
+    return { acao: "remover", alvo, dia: n, arLivre: casa(q, OUTDOOR), palavras: palavrasDe(q).filter((w) => w.length > 3 && !GENERICAS.has(w)) };
+  }
+  if (casa(q, FORA)) return null;
 
   let acao: keyof typeof TERMOS;
   if (fortes.length === 0) acao = "perto";
   else if (fortes.length === 1) acao = fortes[0];
   else if (fortes.length === 2 && fortes.includes("restaurante") && fortes.includes("economizar")) acao = "restaurante";
+  // "Troca o almoço por algo mais barato": é trocar a refeição por uma mais em conta.
+  else if (fortes.length === 3 && fortes.includes("remover") && fortes.includes("restaurante") && fortes.includes("economizar")) acao = "restaurante";
   else if (fortes.length === 2 && fortes.includes("remover") && (fortes.includes("restaurante") || fortes.includes("tranquilo"))) acao = "remover";
   else return null;
 
@@ -185,7 +216,7 @@ const casaEtiqueta = (p: Poi, palavras: string[]) => {
 /** Executa a ação já entendida (pelas regras ou pela IA). */
 export function executar(it: Intencao, days: DayPlan[], idx: number, ctx: Ctx, moeda: string): Reply {
   // "Começar mais tarde amanhã": a ação do dia vai para o dia pedido, não para o aberto.
-  const outroDia = ACOES_DO_DIA.includes(it.acao) && it.dia != null && it.dia - 1 !== idx && it.dia >= 1 && it.dia <= days.length;
+  const outroDia = (ACOES_DO_DIA.includes(it.acao) || it.acao === "remover") && it.dia != null && it.dia - 1 !== idx && it.dia >= 1 && it.dia <= days.length;
   if (outroDia) idx = it.dia! - 1;
   const day = days[idx];
   const dn = "Dia " + (idx + 1);
@@ -214,7 +245,10 @@ export function executar(it: Intencao, days: DayPlan[], idx: number, ctx: Ctx, m
       const center = dayCenter(day, ctx);
       const meals = Object.values(ctx.pois).filter((p) => p.meal && eligible(p, ctx) && !day.items.some((i) => i.p === p.id));
       const byTag = palavras.length ? meals.filter((p) => casaEtiqueta(p, palavras)) : [];
-      const list = (byTag.length ? byTag : meals)
+      const base = byTag.length ? byTag : meals;
+      // Mais barato, mas no caminho do dia: sem isso o mais barato da cidade vinha a 20 min do roteiro.
+      const pertoDoDia = it.barato ? base.filter((p) => haversineKm(p, center) <= 3) : [];
+      const list = (pertoDoDia.length ? pertoDoDia : base)
         .sort((a, b) => (it.barato ? a.preco - b.preco : 0) || haversineKm(a, center) - haversineKm(b, center))
         .slice(0, 3);
       if (!list.length) return { t: "Não encontrei outro lugar para comer cadastrado perto do seu roteiro desse dia." };
@@ -254,7 +288,7 @@ export function executar(it: Intencao, days: DayPlan[], idx: number, ctx: Ctx, m
       else next[idx].items.splice(target, 1);
       const tight = sched(next[idx], idx, ctx).items.some((i) => i.warn);
       return {
-        t: (alt ? "Tirei " + old.nome + " e coloquei uma opção no mesmo caminho, para não aumentar o deslocamento:" : "Tirei " + old.nome + ". Não achei substituto por perto, então o dia ficou mais leve.") +
+        t: (outroDia ? "No " + dn + ", t" : "T") + (alt ? "irei " + old.nome + " e coloquei uma opção no mesmo caminho, para não aumentar o deslocamento:" : "irei " + old.nome + ". Não achei substituto por perto, então o dia ficou mais leve.") +
           (tight ? " Atenção: depois da troca algum horário fica apertado." : ""),
         cards: alt ? [[alt.nome, alt.dur + " min · " + priceTxt(alt.preco, moeda) + " · " + legTxt(old, alt, ctx) + " da parada anterior"]] : undefined,
         apply: "Confirmar", preview: next, kind: "remove",
@@ -294,7 +328,7 @@ export function executar(it: Intencao, days: DayPlan[], idx: number, ctx: Ctx, m
 
 /** Só regras (sem IA). Pedido não entendido vira a ajuda, nunca um chute. */
 export function reply(qRaw: string, days: DayPlan[], idx: number, ctx: Ctx, moeda: string): Reply {
-  const it = entender(qRaw, days[idx], ctx);
+  const it = entender(qRaw, days, idx, ctx);
   if (it) return executar(it, days, idx, ctx, moeda);
   return { t: "Não entendi bem o pedido. " + AJUDA + " Experimente uma das sugestões abaixo." };
 }
@@ -307,7 +341,7 @@ export type ResumoItem = {
 };
 export type Resumo = {
   dia: number; data: string; totalDias: number; saidaHotel: string; voltaHotel: string; voltaHotelTrajeto: string; hotel: string; moeda: string;
-  itens: ResumoItem[]; outrosDias: { dia: number; data: string; lugares: string[] }[];
+  itens: ResumoItem[]; outrosDias: { dia: number; data: string; lugares: { id: number; nome: string }[] }[];
 };
 
 /** O que a IA precisa saber do roteiro para entender e responder. Sem dado pessoal. */
@@ -320,6 +354,6 @@ export function resumir(days: DayPlan[], idx: number, ctx: Ctx, moeda: string): 
       chegada: hm(i.ini), saida: hm(i.fim), abre: i.poi.abre, fecha: i.poi.fecha, preco: faixaTxt(i.poi.preco, moeda), reserva: i.fixed ?? null, coberto: i.poi.indoor,
       refeicao: i.poi.meal, feito: !!i.done, alerta: i.warn === "fechado" ? "fechado nesse dia" : i.warn === "fecha" ? "termina depois de fechar" : i.late ? "chega depois da reserva" : null,
     })),
-    outrosDias: days.map((d, k) => ({ dia: k + 1, data: sched(d, k, ctx).label, lugares: d.items.map((x) => ctx.pois[x.p]?.nome).filter(Boolean) as string[] })).filter((d) => d.dia !== idx + 1),
+    outrosDias: days.map((d, k) => ({ dia: k + 1, data: sched(d, k, ctx).label, lugares: d.items.filter((x) => ctx.pois[x.p]).map((x) => ({ id: x.p, nome: ctx.pois[x.p].nome })) })).filter((d) => d.dia !== idx + 1),
   };
 }
