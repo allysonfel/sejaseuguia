@@ -2,12 +2,14 @@
 import Link from "next/link";
 import { useState } from "react";
 import Icon from "./Icon";
+import Marca from "./Marca";
 import type { Notif } from "@/lib/notifications";
 
-export default function AppHeader({ title, sub, back, avatar, notifs }: { title: string; sub: string; back?: string; avatar?: string | null; notifs?: Notif[] }) {
+export default function AppHeader({ title, sub, back, avatar, notifs, marca }: { title: string; sub: string; back?: string; avatar?: string | null; notifs?: Notif[]; marca?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
+      {marca && <div className="a-brand"><Marca altura={36} fundo="claro" /></div>}
       <div className="a-head">
         {back && <Link className="icon-btn" href={back} aria-label="Voltar"><Icon name="back" /></Link>}
         <div className="t" style={{ flex: 1 }}>

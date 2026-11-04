@@ -1,5 +1,6 @@
 // Gera as imagens da marca a partir dos originais da Lux em mobile/assets/marca/:
 //   - public/marca/logo-escuro.png: logo branco e laranja, fundo transparente (telas com fundo azul escuro)
+//   - public/marca/logo-claro.png: logo azul e laranja, fundo transparente (telas com fundo claro)
 //   - src/app/icon.png (aba do navegador) e src/app/apple-icon.png (atalho no iPhone)
 //   - ícones e telas de abertura do Android e do iPhone
 // Rodar de novo depois de trocar o logo: node mobile/assets/gerar.mjs
@@ -14,10 +15,10 @@ const AZUL_MARCA = { r: 0x13, g: 0x00, b: 0x7c }; // fundo da versão azul do lo
 const AZUL_APP = "#101B3B"; // fundo das telas do app (abertura emenda com o login)
 const LARANJA = [0xfe, 0xa7, 0x05];
 
-// Logo branco e laranja com fundo transparente. A transparência vem da versão preta
-// (preto = logo, branco = fundo, bordas suaves) e a cor de cada ponto vem da versão
-// colorida: onde ela é laranja fica laranja, onde é azul fica branco.
-async function logoEscuro() {
+// Logo com fundo transparente. A transparência vem da versão preta (preto = logo,
+// branco = fundo, bordas suaves) e a cor de cada ponto vem da versão colorida: onde
+// ela é laranja fica laranja; onde é azul fica branco (fundo escuro) ou azul (fundo claro).
+async function logo(principal) {
   const lado = 1600;
   const preto = await sharp(marca("logo-preto.jpg")).resize(lado, lado, { fit: "fill" }).greyscale().raw().toBuffer();
   const cor = await sharp(marca("logo-cor.jpg")).resize(lado, lado, { fit: "fill" }).removeAlpha().raw().toBuffer();
@@ -26,13 +27,16 @@ async function logoEscuro() {
     const a = 255 - preto[i];
     const r = cor[i * 3], b = cor[i * 3 + 2];
     const laranja = r - b > 40;
-    out[i * 4] = laranja ? LARANJA[0] : 255;
-    out[i * 4 + 1] = laranja ? LARANJA[1] : 255;
-    out[i * 4 + 2] = laranja ? LARANJA[2] : 255;
+    const c = laranja ? LARANJA : principal;
+    out[i * 4] = c[0];
+    out[i * 4 + 1] = c[1];
+    out[i * 4 + 2] = c[2];
     out[i * 4 + 3] = a < 12 ? 0 : a;
   }
   return sharp(out, { raw: { width: lado, height: lado, channels: 4 } }).trim({ threshold: 1 }).png().toBuffer();
 }
+const logoEscuro = () => logo([255, 255, 255]);
+const logoClaro = () => logo([AZUL_MARCA.r, AZUL_MARCA.g, AZUL_MARCA.b]);
 
 // Ícone redondo 3D, com o lado de fora do círculo transparente.
 async function icone3d(lado) {
@@ -66,10 +70,11 @@ async function gravar(p, buf) {
 
 mkdirSync(join(raiz, "public/marca"), { recursive: true });
 await gravar(join(raiz, "public/marca/logo-escuro.png"), await sharp(await logoEscuro()).resize(720).png().toBuffer());
+await gravar(join(raiz, "public/marca/logo-claro.png"), await sharp(await logoClaro()).resize(720).png().toBuffer());
 await gravar(join(raiz, "src/app/icon.png"), await sharp(await icone3d(192)).png({ compressionLevel: 9, palette: true, quality: 90 }).toBuffer());
 await gravar(join(raiz, "src/app/apple-icon.png"), await iconeQuadrado(180));
 
-let n = 3;
+let n = 4;
 for (const p of [...pngs(join(raiz, "android/app/src/main/res")), ...pngs(join(raiz, "ios/App/App/Assets.xcassets"))]) {
   const { width: w, height: h } = await sharp(p).metadata();
   const nome = p.split(String.fromCharCode(92)).join("/");
