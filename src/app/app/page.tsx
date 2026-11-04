@@ -49,7 +49,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
 
   return (
     <>
-      <AppHeader title={"Olá, " + firstName(u.nome)} sub={longToday(today)} avatar={u.avatar} notifs={notifs} marca />
+      <AppHeader title={"Olá, " + firstName(u.nome)} sub={longToday(today)} avatar={u.avatar} notifs={notifs} />
       <div className="a-body">
         <div className="pad">
           {trips.length === 0 ? (

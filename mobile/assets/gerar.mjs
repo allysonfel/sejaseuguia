@@ -36,7 +36,8 @@ async function logo(principal) {
   return sharp(out, { raw: { width: lado, height: lado, channels: 4 } }).trim({ threshold: 1 }).png().toBuffer();
 }
 const logoEscuro = () => logo([255, 255, 255]);
-const logoClaro = () => logo([AZUL_MARCA.r, AZUL_MARCA.g, AZUL_MARCA.b]);
+// Fundo claro: o azul do logo vira o azul do app (#101B3B), para combinar com o resto da tela.
+const logoClaro = () => logo([0x10, 0x1b, 0x3b]);
 
 // Ícone redondo 3D, com o lado de fora do círculo transparente.
 async function icone3d(lado) {

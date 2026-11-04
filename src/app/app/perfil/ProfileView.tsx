@@ -8,6 +8,7 @@ import { persona } from "@/lib/quiz";
 import { guardarSom, somAcerto, somLigado } from "@/lib/sons";
 import { toast } from "@/lib/toast";
 import type { Profile } from "@/lib/types";
+import Marca from "@/components/Marca";
 
 // Reduz a foto para 256 px antes de mandar (fica com poucos KB no banco).
 function resize(file: File): Promise<string> {
@@ -110,6 +111,7 @@ export default function ProfileView({ nome, email, avatar, profile, support, age
         </a>
       </div>
       <button className="btn btn-ghost btn-block" onClick={logout} style={{ color: "var(--coral)" }}><Icon name="logout" />Sair</button>
+      <div className="p-marca"><Marca altura={30} fundo="claro" /><small>Uma plataforma {agency}</small></div>
     </div>
   );
 }
