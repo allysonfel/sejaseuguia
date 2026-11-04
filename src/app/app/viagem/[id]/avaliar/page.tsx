@@ -7,6 +7,7 @@ import { sql } from "@/lib/db";
 import { schedAll } from "@/lib/engine";
 import { km1, rangeTxt } from "@/lib/format";
 import Rate from "./Rate";
+import { avisosDo } from "@/lib/notifications";
 
 export default async function Avaliar({ params }: { params: Promise<{ id: string }> }) {
   const u = await requireTraveler();
@@ -20,7 +21,7 @@ export default async function Avaliar({ params }: { params: Promise<{ id: string
   const ended = tripStatus(trip) === "Encerrada";
   return (
     <>
-      <AppHeader title={trip.destino} sub={ended ? "Viagem encerrada" : "Avaliar lugares"} back="/app" avatar={u.avatar} />
+      <AppHeader title={trip.destino} sub={ended ? "Viagem encerrada" : "Avaliar lugares"} back="/app" avatar={u.avatar} notifs={await avisosDo(u)} />
       <div className="a-body">
         <div className="pad">
           <div className="box" style={{ background: "var(--sea)", borderColor: "var(--sea)", color: "#fff" }}>

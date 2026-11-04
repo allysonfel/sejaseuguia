@@ -5,6 +5,7 @@ import { getRules, listTripsForUser, mapPoi, pickActiveTrip, poisForTrip, tripSt
 import { sql } from "@/lib/db";
 import { daysBetween, todayIso } from "@/lib/format";
 import { DEFAULT_PROFILE } from "@/lib/types";
+import { avisosDo } from "@/lib/notifications";
 
 export default async function Descobrir() {
   const u = await requireTraveler();
@@ -18,7 +19,7 @@ export default async function Descobrir() {
   const owner = trip && trip.access !== "owner" ? await getUserById(trip.ownerId) : u;
   return (
     <>
-      <AppHeader title="O que é esse lugar?" sub="Fotografe e descubra" avatar={u.avatar} />
+      <AppHeader title="O que é esse lugar?" sub="Fotografe e descubra" avatar={u.avatar} notifs={await avisosDo(u)} />
       <Discover
         found={found}
         foundIa={foundIa}

@@ -8,6 +8,7 @@ import { listReservations, listTripsForUser, tripStatus } from "@/lib/data";
 import { dayLabel, daysBetween, firstName, longToday, rangeTxt, todayIso } from "@/lib/format";
 import { getNotifications, resIcon } from "@/lib/notifications";
 import { persona } from "@/lib/quiz";
+import Marca from "@/components/Marca";
 
 const STATUS_BADGE = { Planejada: "b-sun", "Em andamento": "b-sea", Encerrada: "b-grey" } as const;
 
@@ -145,6 +146,8 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
               <Link className="btn btn-sun btn-sm" href="/app/perfil-viajante">Ajustar</Link>
             </div>
           </div>
+
+          <div className="p-marca"><Marca altura={28} fundo="claro" /></div>
         </div>
       </div>
       <TabBar />

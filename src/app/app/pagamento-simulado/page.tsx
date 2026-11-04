@@ -5,6 +5,7 @@ import { requireTraveler } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { provedor } from "@/lib/pagamentos";
 import SimuladoAcoes from "./SimuladoAcoes";
+import { avisosDo } from "@/lib/notifications";
 
 // Checkout de mentira (só no ambiente local, PAGAMENTOS_PROVEDOR=simulado) para testar a compra sem a Cakto.
 export default async function PagamentoSimulado({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {
@@ -17,7 +18,7 @@ export default async function PagamentoSimulado({ searchParams }: { searchParams
   if (!p) notFound();
   return (
     <>
-      <AppHeader title="Pagamento simulado" sub="Só no ambiente de teste" avatar={u.avatar} />
+      <AppHeader title="Pagamento simulado" sub="Só no ambiente de teste" avatar={u.avatar} notifs={await avisosDo(u)} />
       <div className="a-body">
         <div className="pad">
           <div className="box">

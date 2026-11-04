@@ -3,12 +3,13 @@ import TabBar from "@/components/TabBar";
 import { requireTraveler } from "@/lib/auth";
 import { cobrancaAtiva } from "@/lib/planos";
 import ProfileView from "./ProfileView";
+import { avisosDo } from "@/lib/notifications";
 
 export default async function Perfil() {
   const u = await requireTraveler();
   return (
     <>
-      <AppHeader title="Perfil" sub="Conta e preferências" avatar={u.avatar} />
+      <AppHeader title="Perfil" sub="Conta e preferências" avatar={u.avatar} notifs={await avisosDo(u)} />
       <div className="a-body">
         <ProfileView nome={u.nome} email={u.email} avatar={u.avatar} profile={u.profile} support={process.env.AGENCY_SUPPORT_EMAIL || null} agency={process.env.AGENCY_NAME || "Lux Viagens e Turismo"} compras={cobrancaAtiva()} />
       </div>

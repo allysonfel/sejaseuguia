@@ -1,7 +1,7 @@
 import type { User } from "./auth";
 import { sql } from "./db";
 import { dayLabel, daysBetween, todayIso, addDays, weekday } from "./format";
-import { tripStatus } from "./data";
+import { listReservations, listTripsForUser, tripStatus } from "./data";
 import type { IconName } from "./icons";
 import type { Reservation, Trip } from "./types";
 
@@ -69,4 +69,10 @@ export async function getNotifications(u: User, trips: Trip[], reservations: Res
         out.push({ ic: "star", t: "Como foi " + t.destino + "?", d: "Suas avaliações melhoram as próximas sugestões.", href: "/app/viagem/" + t.id + "/avaliar" });
   }
   return out;
+}
+
+/** Avisos do sino para as telas que não carregam as viagens (o sino fica ao lado do perfil em todas). */
+export async function avisosDo(u: User): Promise<Notif[]> {
+  const trips = await listTripsForUser(u);
+  return getNotifications(u, trips, await listReservations(trips.map((t) => t.id)));
 }

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Icon from "./Icon";
 import type { Notif } from "@/lib/notifications";
 
-export default function AppHeader({ title, sub, back, avatar, notifs }: { title: string; sub: string; back?: string; avatar?: string | null; notifs?: Notif[] }) {
+export default function AppHeader({ title, sub, back, avatar, notifs }: { title: string; sub: string; back?: string; avatar?: string | null; notifs: Notif[] }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -17,14 +17,14 @@ export default function AppHeader({ title, sub, back, avatar, notifs }: { title:
         <Link className="icon-btn av-btn" href="/app/perfil" title="Meu perfil">
           {avatar ? <img src={avatar} alt="" /> : <Icon name="user" />}
         </Link>
-        {notifs && (
+        {(
           <button className="icon-btn" onClick={() => setOpen(true)} aria-label="Notificações">
             <Icon name="bell" />
             {notifs.length > 0 && <span className="pip" />}
           </button>
         )}
       </div>
-      {open && notifs && (
+      {open && (
         <>
           <div className="sheet-bg" onClick={() => setOpen(false)} />
           <div className="sheet">

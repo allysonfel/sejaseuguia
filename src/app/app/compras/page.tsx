@@ -6,6 +6,7 @@ import { requireTraveler } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { dmy } from "@/lib/format";
 import { assinaturaAtiva } from "@/lib/planos";
+import { avisosDo } from "@/lib/notifications";
 
 const STATUS: Record<string, [string, string]> = {
   aguardando: ["Aguardando pagamento", "b-sun"], pago: ["Pago", "b-sea"], revisar: ["Em conferência", "b-sun"],
@@ -26,7 +27,7 @@ export default async function Compras({ searchParams }: { searchParams: Promise<
   ]);
   return (
     <>
-      <AppHeader title="Minhas compras" sub="Planos e assinatura" back="/app/perfil" avatar={u.avatar} />
+      <AppHeader title="Minhas compras" sub="Planos e assinatura" back="/app/perfil" avatar={u.avatar} notifs={await avisosDo(u)} />
       <div className="a-body">
         <div className="pad">
           {ok && <div className="okmsg">Recebemos o seu pedido. Assim que o pagamento for confirmado (no Pix, em segundos), a viagem é liberada.</div>}
