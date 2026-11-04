@@ -72,6 +72,8 @@ h1,h2,h3{font-family:var(--serif);font-weight:700;letter-spacing:-.01em;line-hei
 @media (max-width:760px){
   .auth{grid-template-columns:1fr;grid-template-rows:auto 1fr}
   .auth-hero{padding:58px 22px 22px}
+  .auth-hero .logo{margin-bottom:20px}
+  .auth-hero .marca{height:54px!important}
   .auth-hero h1{font-size:30px}
   .auth-hero p,.hero-route{display:none}
   .auth-form{align-items:flex-start;padding:24px 22px}

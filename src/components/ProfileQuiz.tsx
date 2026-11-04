@@ -9,6 +9,7 @@ import { firstName } from "@/lib/format";
 import { buildProfile, persona, QUIZ, type QuizAnswers } from "@/lib/quiz";
 import { guardarSom, somAcerto, somFesta, somLigado, somToque } from "@/lib/sons";
 import { toast } from "@/lib/toast";
+import Marca from "@/components/Marca";
 
 type Props =
   | { mode: "signup"; agency: string }
@@ -189,7 +190,7 @@ export default function ProfileQuiz(props: Props) {
     return (
       <form className="qz-intro" onSubmit={(e) => { e.preventDefault(); go(0); }}>
         <div className="between">
-          <div className="logo"><span className="mk"><Icon name="compass" /></span><span>Seja Seu <em>Guia</em></span></div>
+          <div className="logo"><Marca altura={44} /></div>
           {!signup && <button type="button" className="icon-btn qz-close" onClick={() => router.push(props.done)} aria-label="Fechar"><Icon name="close" /></button>}
         </div>
         <div className="qz-intro-m">

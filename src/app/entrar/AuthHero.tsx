@@ -1,4 +1,4 @@
-import Icon from "@/components/Icon";
+import Marca from "@/components/Marca";
 
 export default function AuthHero({ agency }: { agency: string }) {
   const pts: [number, number, string][] = [[30, 290, "1"], [130, 170, "2"], [250, 130, "3"], [400, 40, "4"]];
@@ -13,10 +13,7 @@ export default function AuthHero({ agency }: { agency: string }) {
           </g>
         ))}
       </svg>
-      <div className="logo">
-        <span className="mk"><Icon name="compass" /></span>
-        <span>Seja Seu <em>Guia</em></span>
-      </div>
+      <div className="logo"><Marca altura={68} /></div>
       <div>
         <h1>O roteiro que se <i>ajusta</i> a você, até no meio da viagem.</h1>
         <p>Conte como você gosta de viajar. A gente organiza os dias, encurta os deslocamentos e reorganiza tudo quando os planos mudam.</p>

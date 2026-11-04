@@ -6,6 +6,7 @@ import Icon from "@/components/Icon";
 import { api } from "@/lib/client";
 import type { IconName } from "@/lib/icons";
 import type { AdminModule } from "@/lib/types";
+import Marca from "@/components/Marca";
 
 const NAV: [AdminModule, string, IconName, string, string?][] = [
   ["overview", "/admin", "grid", "Visão geral"],
@@ -29,7 +30,7 @@ export default function AdminNav({ mods, agency, me }: { mods: AdminModule[]; ag
   return (
     <>
       <aside className="side">
-        <div className="logo"><span className="mk"><Icon name="compass" /></span><span>Seja Seu <em>Guia</em></span></div>
+        <div className="logo"><Marca altura={42} /></div>
         <div className="org">{agency}</div>
         <nav>
           {items.map(([k, href, ic, label, grp]) => (
